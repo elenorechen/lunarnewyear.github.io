@@ -74,18 +74,21 @@
         }
     </style>
 
-    <!-- Firebase SDK Setup (Safe Mode) -->
+    <!-- Firebase SDK Setup (Using 10.13.1 for better stability) -->
     <script type="module">
         import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, collection } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
-        const GLOBAL_FB_KEY = '__2026_FORTUNE_FB_PROMISE_V10__';
+        // Global Singleton Key (V8 to ensure fresh start)
+        const GLOBAL_FB_KEY = '__2026_FORTUNE_FB_PROMISE_V8__';
 
+        // 立即執行函式，建立全域 Promise
         (function() {
-            if (window[GLOBAL_FB_KEY]) return;
+            if (window[GLOBAL_FB_KEY]) return; // 如果已經有在跑，就不要重複執行
 
             window[GLOBAL_FB_KEY] = new Promise(async (resolve) => {
+                // 0. 檢查 Config
                 if (typeof window.__firebase_config === 'undefined' || !window.__firebase_config) {
                     console.log("[App] No Firebase Config. Offline Mode.");
                     resolve(null);
@@ -95,11 +98,13 @@
                 try {
                     const firebaseConfig = JSON.parse(window.__firebase_config);
                     let app;
+                    
+                    // 1. Initialize App (Idempotent)
                     try {
                         if (getApps().length === 0) {
                             app = initializeApp(firebaseConfig);
                         } else {
-                            app = getApps()[0];
+                            app = getApps()[0]; // Reuse existing app
                         }
                     } catch (e) {
                         console.warn("[App] Firebase App Init Error:", e);
@@ -109,36 +114,56 @@
 
                     const auth = getAuth(app);
                     const appId = window.__app_id || 'default-app-id';
+
+                    // 2. Initialize Firestore (The Risky Part)
                     let db = null;
-                    
                     try {
+                        // 這裡加上最強力的捕捉，如果有任何錯誤，直接放棄 DB
                         db = getFirestore(app);
                     } catch (err) {
-                        console.warn("[App] Firestore Init Error:", err);
+                        console.warn("[App] Firestore Init Failed (Safe Fallback):", err);
                         db = null;
                     }
 
+                    // 3. Handle Auth (Optional but good to have)
                     if (db) {
-                        // Background Auth
-                        onAuthStateChanged(auth, async (user) => {
-                            if (!user) {
-                                try {
-                                    if (window.__initial_auth_token) {
-                                        await signInWithCustomToken(auth, window.__initial_auth_token);
-                                    } else {
-                                        await signInAnonymously(auth);
+                        // 只有 DB 成功初始化才需要 Auth
+                        await new Promise((authResolve) => {
+                            // 設定一個 2 秒超時，避免 Auth 卡住
+                            const timer = setTimeout(() => authResolve(null), 2000);
+
+                            const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                                clearTimeout(timer);
+                                unsubscribe();
+                                if (user) {
+                                    authResolve(user);
+                                } else {
+                                    try {
+                                        if (window.__initial_auth_token) {
+                                            await signInWithCustomToken(auth, window.__initial_auth_token);
+                                        } else {
+                                            await signInAnonymously(auth);
+                                        }
+                                    } catch (e) {
+                                        console.warn("[App] Auth Failed:", e);
                                     }
-                                } catch (e) {}
-                            }
+                                    authResolve(auth.currentUser);
+                                }
+                            });
                         });
-                        // Resolve immediately with available parts
-                        resolve({ db, appId, auth, doc, getDoc, setDoc, collection });
+                    }
+
+                    // 4. Return Result
+                    if (db && auth.currentUser) {
+                        console.log("[App] Firebase Online.");
+                        resolve({ db, appId, auth, user: auth.currentUser, doc, getDoc, setDoc, collection });
                     } else {
+                        console.log("[App] Firebase Offline/Fallback Mode.");
                         resolve(null);
                     }
 
                 } catch (e) {
-                    console.error("[App] Fatal Error:", e);
+                    console.error("[App] Fatal Firebase Error:", e);
                     resolve(null);
                 }
             });
@@ -168,12 +193,11 @@
         // Data Configuration
         // -----------------------------------------------------------------------------
         
+        // 全場館統一獎項配置
         const DISCOUNTS = [
             { id: 'prize_1', text: '1 元驚喜價', weight: 1, desc: '鴻運當頭！超級大獎' },
-            { id: 'prize_149', text: '單人票 8 折', weight: 9, desc: '恭喜發財！馬到成功' },
-            { id: 'prize_80', text: '單人票 85 折', weight: 10, desc: '好運降臨！馬上有錢' },
-            { id: 'prize_85', text: '單人票 9 折', weight: 30, desc: '福氣滿滿！心猿意馬' },
-            { id: 'prize_90', text: '再接再厲', weight: 50, desc: '新年快樂！駿馬總會遇伯樂！' }
+            { id: 'prize_bogo', text: '買一送一', weight: 24, desc: '好事成雙！喜事連連' },
+            { id: 'prize_combo', text: '物販9折 & 票價7折', weight: 75, desc: '物販商品 9 折 & 常態影片票價 7 折' }
         ];
 
         const FORTUNES = [
@@ -199,7 +223,7 @@
         ];
 
         function App() {
-          const [state, setState] = useState('START'); // Default start, updated in useEffect
+          const [state, setState] = useState('START'); 
           const [fortune, setFortune] = useState(null);
           const [discount, setDiscount] = useState(null);
           const [isRedeemed, setIsRedeemed] = useState(false);
@@ -213,6 +237,7 @@
 
           const TOP_LOGO_URL = "https://i.meee.com.tw/THL1ArX.png";
           const BACKGROUND_URL = "https://i.meee.com.tw/Tww694H.jpg"; 
+          const HERO_IMAGE_URL = "https://i.meee.com.tw/SWoqL2B.jpg"; 
 
           // 1. 初始化與還原
           useEffect(() => {
@@ -229,7 +254,6 @@
                         setState('RESULT');
                         return; // 成功還原，直接結束
                     }
-                    // 如果是舊版資料 (fortune 是物件且無 index)，清除之以免白畫面
                     if (record && record.fortune && typeof record.fortune === 'object' && record.fortuneIndex === undefined) {
                         localStorage.removeItem('2026_fortune_record');
                     }
@@ -291,13 +315,18 @@
 
 
           const drawWithWeight = () => {
-            const totalWeight = DISCOUNTS.reduce((sum, item) => sum + item.weight, 0);
+            // 使用全場館統一獎池
+            const pool = DISCOUNTS;
+            const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
             let random = Math.random() * totalWeight;
-            for (const item of DISCOUNTS) {
-                if (random < item.weight) return item;
+            
+            for (const item of pool) {
+                if (random < item.weight) {
+                    return item;
+                }
                 random -= item.weight;
             }
-            return DISCOUNTS[DISCOUNTS.length - 1];
+            return pool[pool.length - 1]; // Fallback
           };
 
           const drawFortune = () => {
@@ -347,12 +376,11 @@
                       const record = {
                           fortuneIndex: FORTUNES.indexOf(fortune),
                           discount: discount,
-                          timestamp: new Date().toISOString(), // 這裡可能要考慮保留原時間，但簡化起見更新為核銷時間
+                          timestamp: new Date().toISOString(),
                           ip: userIP || 'unknown',
                           isRedeemed: true
                       };
 
-                      // 嘗試保留原時間
                       try {
                           const oldData = JSON.parse(localStorage.getItem('2026_fortune_record'));
                           if(oldData && oldData.timestamp) record.timestamp = oldData.timestamp;
@@ -436,25 +464,7 @@
 
           return (
             <div className="min-h-screen bg-[#8B0000] flex flex-col items-center justify-center p-4 font-serif overflow-hidden relative">
-              {/* 背景圖案 */}
-              <div className="absolute inset-0 pointer-events-none">
-                {BACKGROUND_URL ? (
-                    <img 
-                        src={BACKGROUND_URL} 
-                        alt="Background Pattern" 
-                        className="w-full h-full object-cover opacity-20" 
-                    />
-                ) : (
-                    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" className="opacity-20">
-                      <pattern id="cloud" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-                         <path d="M20,50 Q35,35 50,50 T80,50" fill="none" stroke="#FFD700" strokeWidth="2"/>
-                         <path d="M10,80 Q35,65 60,80 T100,80" fill="none" stroke="#FFD700" strokeWidth="2"/>
-                      </pattern>
-                      <rect width="100%" height="100%" fill="url(#cloud)"/>
-                    </svg>
-                )}
-              </div>
-
+              
               {/* 燈籠 (左右) */}
               <div className="absolute top-0 left-4 md:left-10 w-16 md:w-24 animate-bounce" style={{animationDuration: '3s'}}>
                 <div className="w-full h-20 md:h-32 bg-red-600 rounded-lg border-2 border-yellow-400 shadow-[0_0_15px_rgba(255,215,0,0.5)] flex items-center justify-center relative">
@@ -471,27 +481,13 @@
                 </div>
               </div>
 
-              {/* 標題與 Logo */}
-              <div className="z-10 text-center mb-8 mt-8 md:mt-12">
-                <div className="mb-4">
-                  {TOP_LOGO_URL ? (
-                    <img 
-                      src={TOP_LOGO_URL} 
-                      alt="Brand Logo" 
-                      className="h-28 md:h-36 mx-auto object-contain" 
-                    />
-                  ) : (
-                    <div className="inline-block px-6 py-2 border-2 border-yellow-500 rounded-full bg-red-900/80 backdrop-blur-sm">
-                      <span className="text-yellow-400 font-medium tracking-widest">VOLARE 行動飛行劇院</span>
-                    </div>
-                  )}
-                </div>
-                
-                <h1 className="text-5xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-b from-yellow-300 to-yellow-600 drop-shadow-md tracking-wider" style={{ fontFamily: '"Noto Serif TC", serif' }}>
-                  新春靈籤
-                </h1>
-                
-                <p className="text-yellow-200/80 mt-2 text-lg">誠心祈求 · 指點迷津</p>
+              {/* 標題與 Logo 區域替換為單張圖片 */}
+              <div className="z-10 w-full max-w-lg mx-auto mb-8 mt-8 md:mt-12 px-4">
+                  <img 
+                    src={HERO_IMAGE_URL} 
+                    alt="新春主視覺" 
+                    className="w-full h-auto object-contain drop-shadow-xl" 
+                  />
               </div>
 
               {/* 互動區 */}
@@ -559,7 +555,7 @@
                         <div className={`relative px-6 py-2 text-3xl font-bold text-white border-2 border-yellow-400 shadow-md ${
                           fortune.level === '大吉' ? 'bg-red-600' :
                           fortune.level === '中吉' ? 'bg-orange-600' :
-                          fortune.level === '小吉' ? 'bg-yellow-600' : 'bg-stone-600'
+                          'bg-yellow-600' // Catch all for 小吉 and 末吉
                         }`}>
                           {fortune.level}
                         </div>
@@ -680,5 +676,4 @@
         root.render(<App />);
     </script>
 </body>
-</html>
 </html>
