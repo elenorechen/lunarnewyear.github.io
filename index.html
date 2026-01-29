@@ -2,26 +2,20 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VOLARE 行動飛行劇院｜好運籤詩馬上到</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VOLARE 行動飛行劇院｜2026 好運籤詩馬上到</title>
     
-    <!-- 設定 Open Graph 標籤 -->
+    <!-- Open Graph Tags -->
     <meta property="og:title" content="VOLARE 行動飛行劇院｜好運籤詩馬上到">
-    <meta property="og:description" content="天馬行空飛高高，好運籤詩馬上到！快來 VOLARE 行動飛行劇院抽取您的 2026 年專屬運勢籤詩！">
+    <meta property="og:description" content="天馬行空飛高高，好運籤詩馬上到！快來抽取您的 2026 年專屬運勢籤詩！">
     <meta property="og:type" content="website">
     <meta property="og:image" content="https://elenorechen.github.io/lunarnewyear.github.io/volare_newyearthumb.jpg">
 
-    <!-- 引入 React 和 ReactDOM -->
+    <!-- Dependencies -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
-    <!-- 引入 Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 引入 html2canvas (用於截圖) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
@@ -30,6 +24,9 @@
         body {
             font-family: 'Noto Serif TC', serif;
             background-color: #8B0000;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* 閃爍動畫 */
@@ -43,29 +40,37 @@
             animation: shine 2s infinite;
         }
 
-        /* 籤桶晃動動畫 */
+        /* 籤桶晃動 */
         @keyframes shake {
           0% { transform: rotate(0deg); }
-          20% { transform: rotate(-8deg); }
-          40% { transform: rotate(8deg); }
-          60% { transform: rotate(-8deg); }
-          80% { transform: rotate(8deg); }
+          20% { transform: rotate(-10deg); }
+          40% { transform: rotate(10deg); }
+          60% { transform: rotate(-10deg); }
+          80% { transform: rotate(10deg); }
           100% { transform: rotate(0deg); }
         }
         .animate-shake {
-          animation: shake 0.6s cubic-bezier(.36,.07,.19,.97) infinite;
+          animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) infinite;
         }
 
         /* 漸變進入 */
         @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(30px); }
+          from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fade-in-up {
-          animation: fadeInUp 0.8s ease-out forwards;
+          animation: fadeInUp 0.6s ease-out forwards;
         }
 
-        /* 金粉飄落效果 */
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        /* 金粉飄落 */
         .gold-particle {
           position: absolute;
           background: radial-gradient(circle, #FFD700 0%, transparent 70%);
@@ -82,9 +87,15 @@
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 蓋章效果 */
+        .stamp-text {
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+        }
     </style>
 
-    <!-- Firebase SDK (保持原邏輯) -->
+    <!-- Firebase SDK Logic -->
     <script type="module">
         import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
@@ -117,74 +128,58 @@
         const { useState, useEffect, useRef } = React;
 
         // --- Icons ---
-		
         const LucideIcon = ({ d, className }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
                 <path d={d} />
             </svg>
         );
-		const Briefcase = (props) => <LucideIcon {...props} d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16M2 8h20v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8zM12 12h.01" />;
-		const Heart = (props) => <LucideIcon {...props} d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />;
-		const Home = (props) => <LucideIcon {...props} d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />;
-		const Coins = (props) => <LucideIcon {...props} d="M8 6h8M8 10h8M8 14h8M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />;
-        const Sparkles = (props) => <LucideIcon {...props} d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />;
-        const Gift = (props) => <LucideIcon {...props} d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5M3 8h18v4H3z" />;
+        const Briefcase = (props) => <LucideIcon {...props} d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16M2 8h20v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8zM12 12h.01" />;
+        const Heart = (props) => <LucideIcon {...props} d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />;
+        const Home = (props) => <LucideIcon {...props} d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />;
+        const Coins = (props) => <LucideIcon {...props} d="M8 6h8M8 10h8M8 14h8M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />;
         const Share2 = (props) => <LucideIcon {...props} d="M18 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM6 12a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 19a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />;
         const Info = (props) => <LucideIcon {...props} d="M12 16v-4M12 8h.01M22 12A10 10 0 1 1 12 2a10 10 0 0 1 10 10z" />;
         const CheckCircle = (props) => <LucideIcon {...props} d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3" />;
 
         // --- Data ---
-		const DISCOUNTS = [
-			{ id: 'p1', text: '1 元驚喜價', weight: 1, desc: '鴻運當頭！超級大獎', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' },
-			{ id: 'p2', text: '買一送一', weight: 24, desc: '好事成雙！喜事連連', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' },
-			{ id: 'p3', text: '票價 30% OFF', weight: 75, desc: '票價 7 折超值優惠！', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' }
-		];
+        const DISCOUNTS = [
+            { id: 'p1', text: '1 元驚喜價', weight: 1, desc: '鴻運當頭！超級大獎', note: '限本人購買常態片單全票使用，截圖無效' },
+            { id: 'p2', text: '買一送一', weight: 24, desc: '好事成雙！喜事連連', note: '限本人購買常態片單全票使用，截圖無效' },
+            { id: 'p3', text: '票價 30% OFF', weight: 75, desc: '票價 7 折超值優惠！', note: '限本人購買常態片單全票使用，截圖無效' }
+        ];
 
         const FORTUNES = [
           { level: "大吉", type: "事業", title: "馬到成功", poem: ["千里駿馬遇伯樂", "鵬程萬里展宏圖", "貴人指引登高峰", "事業亨通步步高"], desc: "今年事業運勢如日中天，有晉升或創業的良機，勇往直前必有收穫。", icon: <Briefcase className="w-6 h-6" /> },
-          { level: "大吉", type: "愛情", title: "天作之合", poem: ["良緣夙締喜相逢", "月老紅線緊相牽", "花好月圓人長久", "情深意重福滿門"], desc: "單身者將遇見真命天子/天女，有伴者感情甜蜜，適合談婚論嫁。", icon: <Heart className="w-6 h-6" /> },
+          { level: "大吉", type: "愛情", title: "天作之合", poem: ["良緣夙締喜相逢", "月老紅線緊相牽", "花好月圓人長久", "情深意重福滿門"], desc: "單身者將遇見真命天子，有伴者感情甜蜜，適合談婚論嫁。", icon: <Heart className="w-6 h-6" /> },
           { level: "大吉", type: "家庭", title: "闔家安康", poem: ["瑞氣盈門福壽全", "子孫賢孝樂團圓", "家和萬事皆興旺", "喜氣洋洋過好年"], desc: "家庭氣氛和諧，長輩健康，晚輩乖巧，家中應有喜事發生。", icon: <Home className="w-6 h-6" /> },
           { level: "大吉", type: "財運", title: "財源廣進", poem: ["金銀財寶滾滾來", "投資理財眼光開", "正財偏財皆得意", "富貴榮華不需猜"], desc: "財星高照，無論是工作獎金或投資獲利都相當豐厚。", icon: <Coins className="w-6 h-6" /> },
-          
           { level: "中吉", type: "事業", title: "穩步高升", poem: ["耕耘數載見花開", "雖然勞碌亦無災", "堅守崗位多努力", "功名利祿自然來"], desc: "工作表現穩定，雖有些許忙碌，但付出都能得到對等的回報。", icon: <Briefcase className="w-6 h-6" /> },
           { level: "中吉", type: "愛情", title: "心心相印", poem: ["即使偶有小風波", "雨過天晴情更多", "互相包容解心結", "琴瑟和鳴樂呵呵"], desc: "感情穩定發展，多溝通能化解小誤會，關係會更加緊密。", icon: <Heart className="w-6 h-6" /> },
           { level: "中吉", type: "家庭", title: "知足常樂", poem: ["平平安安即是福", "莫與他人比財祿", "且看庭前花開落", "家中自有黃金屋"], desc: "生活平順就是最大的福氣，珍惜與家人相處的時光。", icon: <Home className="w-6 h-6" /> },
           { level: "中吉", type: "財運", title: "積沙成塔", poem: ["小財源源不斷流", "節約開支不用愁", "聚沙成塔庫房滿", "穩健經營最優遊"], desc: "財運平穩，適合儲蓄與保守型投資，切勿貪圖暴利。", icon: <Coins className="w-6 h-6" /> },
-          
           { level: "小吉", type: "事業", title: "蓄勢待發", poem: ["目前雖在低谷行", "莫灰心志莫停停", "待到春風吹柳綠", "一舉成名天下聞"], desc: "現在是累積實力的時期，保持耐心，機會即將到來。", icon: <Briefcase className="w-6 h-6" /> },
           { level: "小吉", type: "愛情", title: "細水長流", poem: ["緣分未到莫強求", "順其自然解千愁", "若是真心相待處", "春暖花開水長流"], desc: "感情進展較慢，不要急躁，慢慢培養感情會更長久。", icon: <Heart className="w-6 h-6" /> },
           { level: "小吉", type: "家庭", title: "和氣生財", poem: ["瑣碎家事莫計較", "退讓一步樂逍遙", "相互體諒多寬慰", "門庭吉慶喜眉梢"], desc: "家中瑣事較多，多一點包容與體諒，能避免不必要的口角。", icon: <Home className="w-6 h-6" /> },
-          { level: "小吉", type: "財運", title: "小有所獲", poem: ["意外之財不可貪", "踏實工作心才安", "量入為出多算計", "自有餘糧在盤餐"], desc: "有些許偏財運，但主要還是靠正財，注意收支平衡。", icon: <Coins className="w-6 h-6" /> },
-          
-          { level: "末吉", type: "事業", title: "守成不易", poem: ["風浪之中舟難行", "且將帆落待天晴", "謹言慎行防小人", "守得雲開見月明"], desc: "職場風波較多，宜調行事，保守為上，等待時機好轉。", icon: <Briefcase className="w-6 h-6" /> },
-          { level: "末吉", type: "愛情", title: "自愛自重", poem: ["落花有意水無情", "何必單戀一枝盈", "修身養性待良緣", "自有佳人伴君行"], desc: "目前緣分未到或有波折，先專注於提升自己，花若盛開蝴蝶自來。", icon: <Heart className="w-6 h-6" /> },
-          { level: "末吉", type: "家庭", title: "除舊佈新", poem: ["舊習未除新運阻", "當思變通換門戶", "多行善事積陰德", "枯木逢春再發株"], desc: "家庭可能面臨一些變動或考驗，是改變壞習慣的好時機。", icon: <Home className="w-6 h-6" /> },
-          { level: "末吉", type: "財運", title: "謹慎理財", poem: ["錢財身外莫強求", "投資失利令人憂", "安分守己勤耕作", "免得債務上心頭"], desc: "今年財運較弱，切忌借貸與高風險投資，保守儲蓄為上策。", icon: <Coins className="w-6 h-6" /> }
+          { level: "小吉", type: "財運", title: "小有所獲", poem: ["意外之財不可貪", "踏實工作心才安", "量入為出多算計", "自有餘糧在盤餐"], desc: "有些許偏財運，但主要還是靠正財，注意收支平衡。", icon: <Coins className="w-6 h-6" /> }
         ];
-
 
         function ParticleField() {
             const [particles, setParticles] = useState([]);
             useEffect(() => {
-                const count = 15;
-                const newParticles = Array.from({ length: count }).map((_, i) => ({
+                setParticles(Array.from({ length: 15 }).map((_, i) => ({
                     id: i,
                     left: `${Math.random() * 100}%`,
                     size: `${Math.random() * 5 + 2}px`,
                     delay: `${Math.random() * 5}s`,
                     duration: `${Math.random() * 3 + 4}s`
-                }));
-                setParticles(newParticles);
+                })));
             }, []);
             return (
                 <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
                     {particles.map(p => (
                         <div key={p.id} className="gold-particle" style={{
-                            left: p.left,
-                            width: p.size,
-                            height: p.size,
-                            animationDelay: p.delay,
-                            animationDuration: p.duration
+                            left: p.left, width: p.size, height: p.size,
+                            animationDelay: p.delay, animationDuration: p.duration
                         }} />
                     ))}
                 </div>
@@ -197,6 +192,7 @@
           const [discount, setDiscount] = useState(null);
           const [isRedeemed, setIsRedeemed] = useState(false);
           const [showRules, setShowRules] = useState(false);
+          const [showRedeemConfirm, setShowRedeemConfirm] = useState(false);
           const [isSharing, setIsSharing] = useState(false);
           const fortuneRef = useRef(null);
           
@@ -204,14 +200,19 @@
           const BG_URL = "https://elenorechen.github.io/lunarnewyear.github.io/04.jpg";
 
           useEffect(() => {
-            const localData = localStorage.getItem('2026_fortune_record_v2');
-            if (localData) {
-                const record = JSON.parse(localData);
-                setFortune(FORTUNES[record.fortuneIndex]);
-                setDiscount(record.discount);
-                setIsRedeemed(record.isRedeemed);
-                setState('RESULT');
-            }
+            try {
+                const localData = localStorage.getItem('2026_fortune_record_v2');
+                if (localData) {
+                    const record = JSON.parse(localData);
+                    const savedFortune = FORTUNES[record.fortuneIndex];
+                    if (savedFortune) {
+                        setFortune(savedFortune);
+                        setDiscount(record.discount);
+                        setIsRedeemed(record.isRedeemed || false);
+                        setState('RESULT');
+                    }
+                }
+            } catch (e) { console.error("Storage load error", e); }
           }, []);
 
           const drawFortune = () => {
@@ -230,22 +231,25 @@
               setDiscount(d);
               setIsRedeemed(false);
               localStorage.setItem('2026_fortune_record_v2', JSON.stringify({
-                  fortuneIndex: fIdx,
-                  discount: d,
-                  isRedeemed: false,
-                  timestamp: new Date().toISOString()
+                  fortuneIndex: fIdx, discount: d, isRedeemed: false, timestamp: new Date().toISOString()
               }));
               setState('RESULT');
-            }, 2500);
+            }, 2000);
           };
 
           const handleRedeem = () => {
-              if (window.confirm("是否確定要核銷？為保障您的權益，請交由工作人員確認")) {
-                  setIsRedeemed(true);
-                  const record = JSON.parse(localStorage.getItem('2026_fortune_record_v2'));
+              setShowRedeemConfirm(true);
+          };
+
+          const executeRedeem = () => {
+              setIsRedeemed(true);
+              const localData = localStorage.getItem('2026_fortune_record_v2');
+              if (localData) {
+                  const record = JSON.parse(localData);
                   record.isRedeemed = true;
                   localStorage.setItem('2026_fortune_record_v2', JSON.stringify(record));
               }
+              setShowRedeemConfirm(false);
           };
 
           const handleShare = async () => {
@@ -253,14 +257,12 @@
             setIsSharing(true);
             try {
                 const canvas = await html2canvas(fortuneRef.current, {
-                    scale: 2,
-                    backgroundColor: '#FFFDF5',
-                    useCORS: true
+                    scale: 2, backgroundColor: '#FFFDF5', useCORS: true, logging: false
                 });
                 const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
                 const file = new File([blob], "fortune.png", { type: "image/png" });
                 
-                if (navigator.share && navigator.canShare({ files: [file] })) {
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
                         files: [file],
                         title: 'VOLARE 2026 開運靈籤',
@@ -272,7 +274,7 @@
                     link.href = canvas.toDataURL();
                     link.click();
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Share error", e); }
             setIsSharing(false);
           };
 
@@ -280,39 +282,28 @@
             <div className="min-h-screen bg-[#8B0000] flex flex-col items-center relative overflow-x-hidden">
               <ParticleField />
               
-              {/* 背景圖案 */}
               <div className="absolute inset-0 opacity-10 pointer-events-none z-0">
-                  <img src={BG_URL} className="w-full h-full object-cover" />
+                  <img src={BG_URL} className="w-full h-full object-cover" alt="bg" />
               </div>
 
-              {/* 固定標題/主視覺 */}
               <header className={`w-full max-w-lg transition-all duration-700 z-10 ${state === 'RESULT' ? 'mt-4' : 'mt-8 md:mt-12'}`}>
                   <div className="px-6 flex justify-center">
-                    <img 
-                        src={HERO_IMAGE_URL} 
-                        alt="VOLARE 2026" 
-                        className={`w-full h-auto rounded-xl shadow-2xl border-2 border-yellow-500/50 transition-transform ${state === 'RESULT' ? 'scale-90' : 'scale-100'}`} 
-                    />
+                    <img src={HERO_IMAGE_URL} alt="VOLARE 2026" className={`w-full h-auto rounded-xl shadow-2xl border-2 border-yellow-500/50 transition-transform ${state === 'RESULT' ? 'scale-90' : 'scale-100'}`} />
                   </div>
               </header>
 
-              {/* 主要互動區域 */}
               <main className="flex-1 w-full max-w-md flex flex-col items-center justify-start py-8 px-4 z-10">
                 
                 {state === 'START' && (
-                  <div className="w-full flex flex-col items-center animate-fade-in-up">
+                  <div className="w-full flex flex-col items-center animate-fade-in-up pt-12">
                     <div className="relative mb-12 flex flex-col items-center group cursor-pointer" onClick={drawFortune}>
-                        {/* 籤桶視覺優化 */}
                         <div className="w-48 h-72 relative mb-8">
-                            {/* 籤桶本體 */}
                             <div className="absolute inset-0 bg-gradient-to-b from-red-700 via-red-800 to-black rounded-t-lg rounded-b-[40px] border-4 border-yellow-500 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
-                                {/* 裝飾雲紋 */}
                                 <div className="absolute top-4 left-0 w-full h-8 opacity-30 border-y border-yellow-400"></div>
                                 <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-20 h-20 border-2 border-yellow-500 rotate-45 flex items-center justify-center">
                                     <span className="text-yellow-400 font-black text-4xl -rotate-45">靈</span>
                                 </div>
                             </div>
-                            {/* 籤支 */}
                             <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex gap-1 items-end">
                                 <div className="w-2.5 h-20 bg-[#f3e5ab] border border-yellow-800 rounded-t transform -rotate-12"></div>
                                 <div className="w-2.5 h-24 bg-[#f3e5ab] border border-yellow-800 rounded-t transform -rotate-3 z-10"></div>
@@ -320,26 +311,20 @@
                             </div>
                         </div>
                         
-                        {/* 置中的抽籤按鈕 */}
-                        <div className="px-10 py-4 bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-600 text-red-900 font-black text-2xl rounded-full shadow-[0_0_20px_rgba(255,215,0,0.5)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 border-2 border-white w-full max-w-[280px]">
-                            <LucideIcon className="w-6 h-6 animate-pulse" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                        <button className="px-10 py-4 bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-600 text-red-900 font-black text-2xl rounded-full shadow-[0_0_20px_rgba(255,215,0,0.5)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 border-2 border-white w-full max-w-[280px]">
                             立即求籤
-                            <LucideIcon className="w-6 h-6 animate-pulse" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-                        </div>
+                        </button>
                     </div>
                   </div>
                 )}
 
                 {state === 'ANIMATING' && (
-                  <div className="flex flex-col items-center justify-center pt-20">
+                  <div className="flex flex-col items-center justify-center pt-24 animate-fade-in">
                     <div className="animate-shake w-48 h-72 bg-gradient-to-b from-red-700 to-black rounded-t-lg rounded-b-[40px] border-4 border-yellow-500 relative shadow-2xl">
                          <div className="absolute -top-16 left-1/2 -translate-x-1/2 flex gap-1 items-end animate-bounce">
                                 <div className="w-3 h-24 bg-[#f3e5ab] border border-yellow-800 rounded-t"></div>
                                 <div className="w-3 h-28 bg-[#f3e5ab] border border-yellow-800 rounded-t"></div>
                                 <div className="w-3 h-24 bg-[#f3e5ab] border border-yellow-800 rounded-t"></div>
-                         </div>
-                         <div className="absolute inset-0 flex items-center justify-center">
-                            <span className="text-yellow-400 font-black text-5xl opacity-20">運</span>
                          </div>
                     </div>
                     <p className="mt-12 text-yellow-300 text-2xl font-black tracking-widest animate-pulse">誠心祈求中...</p>
@@ -348,25 +333,13 @@
 
                 {state === 'RESULT' && fortune && (
                   <div className="animate-fade-in-up w-full">
-                    {/* 籤詩卡片 */}
                     <div ref={fortuneRef} className="bg-[#FFFDF5] rounded-xl shadow-2xl border-[12px] border-double border-red-800 overflow-hidden relative">
-                        {/* 內嵌主視覺浮水印 */}
-                        <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none">
-                            <img src={HERO_IMAGE_URL} className="w-full h-full object-cover" />
-                        </div>
-
-                        <div className="p-6 flex flex-col items-center">
-                            
-                            {/* 運勢印章 (修正文字垂直順序) */}
+                        <div className="p-6 flex flex-col items-center relative z-10">
                             <div className="mb-6 mt-4 relative">
-                                <div className="w-20 h-24 border-4 border-red-700 rounded-lg flex flex-col items-center justify-center bg-white shadow-inner gap-0 py-1">
-                                    {fortune.level.split('').map((char, i) => (
-                                        <span key={i} className="text-red-700 font-black text-4xl leading-tight">
-                                            {char}
-                                        </span>
-                                    ))}
+                                <div className="w-20 h-28 border-4 border-red-700 rounded-lg flex flex-col items-center justify-center bg-white shadow-inner py-2">
+                                    <span className="text-red-700 font-black text-4xl stamp-text leading-none">{fortune.level}</span>
                                 </div>
-                                <div className="absolute -right-4 -bottom-4 bg-yellow-500 text-red-900 px-2 py-0.5 text-xs font-bold rounded transform rotate-12 border border-red-800">
+                                <div className="absolute -right-4 -bottom-2 bg-yellow-500 text-red-900 px-2 py-0.5 text-xs font-bold rounded transform rotate-12 border border-red-800">
                                     {fortune.type}
                                 </div>
                             </div>
@@ -386,20 +359,14 @@
                                 </p>
                             </div>
 
-                            {/* 加強後的獎項區 */}
                             {discount && (
                                 <div className={`w-full relative transition-all ${isRedeemed ? 'opacity-50 grayscale' : ''}`}>
                                     <div className="absolute -inset-1 bg-gradient-to-r from-yellow-600 via-yellow-300 to-yellow-600 rounded-xl blur opacity-30 animate-pulse"></div>
                                     <div className={`relative bg-gradient-to-r from-red-600 to-red-800 text-white p-4 rounded-xl shadow-xl border-2 border-yellow-400 ${!isRedeemed ? 'animate-shine' : ''}`}>
                                         <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="bg-yellow-400 p-2 rounded-full text-red-800 shadow-md">
-                                                    <LucideIcon className="w-6 h-6" d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5M3 8h18v4H3z" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-bold text-yellow-300 uppercase tracking-tighter">New Year Special</p>
-                                                    <h3 className="text-2xl font-black text-white">{discount.text}</h3>
-                                                </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold text-yellow-300 uppercase tracking-tighter">New Year Offer</p>
+                                                <h3 className="text-2xl font-black text-white">{discount.text}</h3>
                                             </div>
                                             <div className="text-right">
                                                 {isRedeemed ? (
@@ -407,18 +374,15 @@
                                                         <CheckCircle className="w-3 h-3" /> 已核銷
                                                     </div>
                                                 ) : (
-                                                    <button 
-                                                        onClick={handleRedeem}
-                                                        className="bg-yellow-400 text-red-900 px-3 py-1.5 rounded-lg text-xs font-black shadow-lg hover:bg-white active:scale-95 transition-all"
-                                                    >
+                                                    <button onClick={handleRedeem} className="bg-yellow-400 text-red-900 px-3 py-1.5 rounded-lg text-xs font-black shadow-lg hover:bg-white active:scale-95 transition-all">
                                                         核銷點我
                                                     </button>
                                                 )}
                                             </div>
                                         </div>
-                                        <div className="mt-2 text-[10px] text-yellow-200/80 border-t border-white/20 pt-2 flex justify-between">
-                                            <span>期限: 2026/03/01</span>
+                                        <div className="mt-2 text-[10px] text-yellow-200/80 border-t border-white/20 pt-2 flex flex-col gap-0.5">
                                             <span>{discount.note}</span>
+                                            <span className="text-yellow-400 font-bold">限 2026/3/1 前使用完畢</span>
                                         </div>
                                     </div>
                                 </div>
@@ -426,27 +390,21 @@
                         </div>
                     </div>
 
-                    {/* 操作按鈕 */}
                     <div className="mt-8 flex gap-3">
-                        <button 
-                            onClick={handleShare}
-                            disabled={isSharing}
-                            className="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-red-900 font-black py-4 rounded-xl shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all border-b-4 border-yellow-800 disabled:opacity-50"
-                        >
+                        <button onClick={handleShare} disabled={isSharing} className="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-red-900 font-black py-4 rounded-xl shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all border-b-4 border-yellow-800 disabled:opacity-50">
                             <Share2 className="w-6 h-6" />
                             {isSharing ? '圖片生成中...' : '分享好運氣'}
                         </button>
                     </div>
 
-                    {/* 底部說明 */}
-                    <div className="mt-8 bg-black/20 backdrop-blur-md rounded-xl p-6 border border-yellow-500/30">
-                        <h4 className="text-yellow-400 font-black mb-3 flex items-center gap-2">
+                    <div className="mt-8 bg-black/20 backdrop-blur-md rounded-xl p-6 border border-yellow-500/30 text-white/80 text-xs">
+                        <h4 className="text-yellow-400 font-black mb-3 flex items-center gap-2 text-sm">
                             <Info className="w-5 h-5" /> 活動須知
                         </h4>
-                        <ul className="text-white/80 text-xs space-y-2 list-decimal list-inside pl-1">
-                            <li>本活動優惠僅限現場核銷使用，請由工作人員操作，自行點擊核銷或截圖皆視為無效。</li>
-                            <li>每人限參加乙次，優惠券限 2026/3/1 前使用有效。</li>
-                            <li>優惠不得與其他折扣併用，亦不得要求折現或更換其他商品。</li>
+                        <ul className="space-y-2 list-decimal list-inside">
+                            <li>優惠僅限現場核銷使用，由工作人員點擊，自行核銷無效。</li>
+                            <li>每人限參加一次，優惠限 2026/3/1 前有效。</li>
+                            <li>不得與其他折扣併用或折換現金。</li>
                             <li>VOLARE 行動飛行劇院保有最終解釋權。</li>
                         </ul>
                     </div>
@@ -454,7 +412,6 @@
                 )}
               </main>
 
-              {/* 頁尾 */}
               <footer className="w-full text-center py-8 z-10">
                    {state === 'START' && (
                         <button onClick={() => setShowRules(true)} className="text-yellow-500/60 text-xs underline mb-4">
@@ -462,26 +419,55 @@
                         </button>
                    )}
                    <div className="text-yellow-600/40 text-[10px] tracking-widest">
-                        © 2026 VOLARE 行動飛行劇院丙午年春節限定 · ALL RIGHTS RESERVED
+                        © 2026 VOLARE 行動飛行劇院丙午年限定
                    </div>
               </footer>
 
-              {/* 規則彈窗 */}
               {showRules && (
                   <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setShowRules(false)}>
                       <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden border-4 border-red-800" onClick={e => e.stopPropagation()}>
-                          <div className="bg-red-800 p-4 text-yellow-400 font-black text-center text-xl">
-                              2026 新春開運指南
-                          </div>
+                          <div className="bg-red-800 p-4 text-yellow-400 font-black text-center text-xl">2026 新春開運指南</div>
                           <div className="p-6 text-gray-700 text-sm leading-relaxed space-y-3">
-                             <p>本活動優惠僅限現場核銷使用，請由工作人員操作，自行點擊核銷或截圖皆視為無效。</p>
-                             <p>每人限參加一次，優惠券限 2026/3/1 前使用有效。請在結帳前出示畫面給工作人員。</p>
-                             <p>優惠不得與其他折扣併用，亦不得要求折現或更換其他商品。</p>
-                             <p>贈品數量有限，送完為止，主辦單位保留更換等值贈品之權利。</p>
+                             <p>1. 本活動優惠僅限現場核銷使用，請由工作人員操作。</p>
+                             <p>2. 每人限參加一次，期限至 2026/03/01。</p>
+                             <p>3. 優惠不得要求折現或更換其他商品。</p>
+                             <p>4. 贈品數量有限，送完為止。</p>
                           </div>
-                          <button onClick={() => setShowRules(false)} className="w-full bg-gray-100 py-4 font-bold text-gray-500 hover:bg-gray-200 transition-colors">
-                              關閉視窗
-                          </button>
+                          <button onClick={() => setShowRules(false)} className="w-full bg-gray-100 py-4 font-bold text-gray-500 hover:bg-gray-200">關閉視窗</button>
+                      </div>
+                  </div>
+              )}
+
+              {showRedeemConfirm && (
+                  <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-fade-in">
+                      <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden border-4 border-red-800 shadow-2xl">
+                          <div className="bg-red-800 p-4 text-white font-black text-center text-xl">核銷確認</div>
+                          <div className="p-8 text-center">
+                              <div className="mb-4 flex justify-center">
+                                  <div className="bg-red-100 p-4 rounded-full">
+                                      <Info className="w-10 h-10 text-red-600" />
+                                  </div>
+                              </div>
+                              <p className="text-gray-800 font-bold text-lg mb-2">是否確定要核銷？</p>
+                              <p className="text-gray-500 text-sm leading-relaxed">
+                                  為保障您的權益，請務必<br/>
+                                  <span className="text-red-600 font-black">交由工作人員現場點擊</span>
+                              </p>
+                          </div>
+                          <div className="flex border-t border-gray-100">
+                              <button 
+                                onClick={() => setShowRedeemConfirm(false)} 
+                                className="flex-1 py-4 font-bold text-gray-400 hover:bg-gray-50 border-r border-gray-100"
+                              >
+                                取消
+                              </button>
+                              <button 
+                                onClick={executeRedeem} 
+                                className="flex-1 py-4 font-black text-red-600 hover:bg-red-50"
+                              >
+                                確定核銷
+                              </button>
+                          </div>
                       </div>
                   </div>
               )}
