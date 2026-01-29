@@ -24,161 +24,122 @@
     <!-- 引入 html2canvas (用於截圖) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-    <!-- 自定義字型與動畫樣式 -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&display=swap');
         
         body {
             font-family: 'Noto Serif TC', serif;
+            background-color: #8B0000;
         }
 
+        /* 閃爍動畫 */
+        @keyframes shine {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+        .animate-shine {
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 100%;
+            animation: shine 2s infinite;
+        }
+
+        /* 籤桶晃動動畫 */
         @keyframes shake {
-          0% { transform: translate(1px, 1px) rotate(0deg); }
-          10% { transform: translate(-1px, -2px) rotate(-1deg); }
-          20% { transform: translate(-3px, 0px) rotate(1deg); }
-          30% { transform: translate(3px, 2px) rotate(0deg); }
-          40% { transform: translate(1px, -1px) rotate(1deg); }
-          50% { transform: translate(-1px, 2px) rotate(-1deg); }
-          60% { transform: translate(-3px, 1px) rotate(0deg); }
-          70% { transform: translate(3px, 1px) rotate(-1deg); }
-          80% { transform: translate(-1px, -1px) rotate(1deg); }
-          90% { transform: translate(1px, 2px) rotate(0deg); }
-          100% { transform: translate(1px, -2px) rotate(-1deg); }
+          0% { transform: rotate(0deg); }
+          20% { transform: rotate(-8deg); }
+          40% { transform: rotate(8deg); }
+          60% { transform: rotate(-8deg); }
+          80% { transform: rotate(8deg); }
+          100% { transform: rotate(0deg); }
         }
         .animate-shake {
-          animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both infinite;
+          animation: shake 0.6s cubic-bezier(.36,.07,.19,.97) infinite;
         }
-        .writing-vertical {
-          writing-mode: vertical-rl;
-          text-orientation: upright;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
+
+        /* 漸變進入 */
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-in {
-          animation: fadeIn 0.8s ease-out forwards;
+        .animate-fade-in-up {
+          animation: fadeInUp 0.8s ease-out forwards;
         }
-        
-        /* 替換原本的 flipIn 為更穩定的 popIn */
-        @keyframes popIn {
-          0% { opacity: 0; transform: scale(0.9); }
-          100% { opacity: 1; transform: scale(1); }
+
+        /* 金粉飄落效果 */
+        .gold-particle {
+          position: absolute;
+          background: radial-gradient(circle, #FFD700 0%, transparent 70%);
+          border-radius: 50%;
+          pointer-events: none;
+          z-index: 5;
+          opacity: 0;
+          animation: fall linear infinite;
         }
-        .animate-pop-in {
-          animation: popIn 0.3s ease-out forwards;
+        @keyframes fall {
+          0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(110vh) translateX(50px) rotate(360deg); opacity: 0; }
         }
-        
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
+
+        /* 傳統印章質感 */
+        .seal-font {
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            letter-spacing: 0.1em;
         }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 
-    <!-- Firebase SDK Setup (Safe Mode) -->
+    <!-- Firebase SDK (保持原邏輯) -->
     <script type="module">
-        import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+        import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, collection } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
         const GLOBAL_FB_KEY = '__2026_FORTUNE_FB_PROMISE_V10__';
-
-        (function() {
-            if (window[GLOBAL_FB_KEY]) return;
-
-            window[GLOBAL_FB_KEY] = new Promise(async (resolve) => {
-                if (typeof window.__firebase_config === 'undefined' || !window.__firebase_config) {
-                    console.log("[App] No Firebase Config. Offline Mode.");
-                    resolve(null);
-                    return;
-                }
-
-                try {
-                    const firebaseConfig = JSON.parse(window.__firebase_config);
-                    let app;
-                    try {
-                        if (getApps().length === 0) {
-                            app = initializeApp(firebaseConfig);
-                        } else {
-                            app = getApps()[0];
-                        }
-                    } catch (e) {
-                        console.warn("[App] Firebase App Init Error:", e);
-                        resolve(null);
-                        return;
+        window[GLOBAL_FB_KEY] = new Promise(async (resolve) => {
+            if (!window.__firebase_config) { resolve(null); return; }
+            try {
+                const config = JSON.parse(window.__firebase_config);
+                const app = getApps().length === 0 ? initializeApp(config) : getApps()[0];
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+                const appId = window.__app_id || 'default-app-id';
+                onAuthStateChanged(auth, async (user) => {
+                    if (!user) {
+                        if (window.__initial_auth_token) await signInWithCustomToken(auth, window.__initial_auth_token);
+                        else await signInAnonymously(auth);
                     }
-
-                    const auth = getAuth(app);
-                    const appId = window.__app_id || 'default-app-id';
-                    let db = null;
-                    
-                    try {
-                        db = getFirestore(app);
-                    } catch (err) {
-                        console.warn("[App] Firestore Init Error:", err);
-                        db = null;
-                    }
-
-                    if (db) {
-                        // Background Auth
-                        onAuthStateChanged(auth, async (user) => {
-                            if (!user) {
-                                try {
-                                    if (window.__initial_auth_token) {
-                                        await signInWithCustomToken(auth, window.__initial_auth_token);
-                                    } else {
-                                        await signInAnonymously(auth);
-                                    }
-                                } catch (e) {}
-                            }
-                        });
-                        // Resolve immediately with available parts
-                        resolve({ db, appId, auth, doc, getDoc, setDoc, collection });
-                    } else {
-                        resolve(null);
-                    }
-
-                } catch (e) {
-                    console.error("[App] Fatal Error:", e);
-                    resolve(null);
-                }
-            });
-        })();
+                });
+                resolve({ db, appId, auth, doc, getDoc, setDoc, collection });
+            } catch (e) { resolve(null); }
+        });
     </script>
 </head>
-<body>
+<body className="antialiased">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
         // --- Icons ---
-        const Sparkles = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/><path d="M3 9h4"/></svg>;
-        const Briefcase = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></svg>;
-        const Heart = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 14c1.49-1.28 3-2.5 3-4.74 0-2.3-2.1-4.26-4.5-4.26-2.1 0-3.9 1.5-4.5 3.5-.6-2-2.4-3.5-4.5-3.5C3.1 5 1 6.96 1 9.26c0 2.24 1.5 3.46 3 4.74L12 21l8-7z"/></svg>;
-        const Home = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
-        const Coins = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7 .71-2.82 2.82"/></svg>;
-        const RotateCcw = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
-        const Share2 = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>;
-        const Copy = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>;
-        const Check = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 6 9 17l-5-5"/></svg>;
-        const Gift = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>;
-        const Stamp = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;
-        const Info = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>;
-        const X = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+        const LucideIcon = ({ d, className }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d={d} />
+            </svg>
+        );
+        const Sparkles = (props) => <LucideIcon {...props} d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />;
+        const Gift = (props) => <LucideIcon {...props} d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5M3 8h18v4H3z" />;
+        const Share2 = (props) => <LucideIcon {...props} d="M18 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM6 12a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 19a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />;
+        const Info = (props) => <LucideIcon {...props} d="M12 16v-4M12 8h.01M22 12A10 10 0 1 1 12 2a10 10 0 0 1 10 10z" />;
+        const CheckCircle = (props) => <LucideIcon {...props} d="M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3" />;
 
-        // -----------------------------------------------------------------------------
-        // Data Configuration
-        // -----------------------------------------------------------------------------
-        
-        // 全場館統一獎項配置 (更新)
+        // --- Data ---
         const DISCOUNTS = [
-            { id: 'prize_1', text: '1 元驚喜價', weight: 1, desc: '鴻運當頭！超級大獎', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' },
-            { id: 'prize_bogo', text: '買一送一', weight: 24, desc: '好事成雙！喜事連連', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' },
-            { id: 'prize_combo', text: '票價 30% OFF', weight: 75, desc: '票價 7 折超值優惠！', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' }
+            { id: 'p1', text: '1 元驚喜價', weight: 1, desc: '鴻運當頭！超級大獎', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' },
+            { id: 'p2', text: '買一送一', weight: 24, desc: '好事成雙！喜事連連', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' },
+            { id: 'p3', text: '票價 30% OFF, weight: 75, desc: '票價 7 折超值優惠！', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' }
         ];
 
         const FORTUNES = [
@@ -202,618 +163,324 @@
           { level: "末吉", type: "家庭", title: "除舊佈新", poem: ["舊習未除新運阻", "當思變通換門戶", "多行善事積陰德", "枯木逢春再發株"], desc: "家庭可能面臨一些變動或考驗，是改變壞習慣的好時機。", icon: <Home className="w-6 h-6" /> },
           { level: "末吉", type: "財運", title: "謹慎理財", poem: ["錢財身外莫強求", "投資失利令人憂", "安分守己勤耕作", "免得債務上心頭"], desc: "今年財運較弱，切忌借貸與高風險投資，保守儲蓄為上策。", icon: <Coins className="w-6 h-6" /> }
         ];
-        
-        // 說明事項列表
-        const RULES_TEXT = [
-            "本活動優惠僅限現場核銷使用，請由工作人員操作，自行點擊核銷或截圖皆視為無效。",
-            "每人限參加一次，優惠券限 2026/3/1 前使用有效。",
-            "優惠不得與其他折扣併用，亦不得要求折現或更換其他商品。",
-            "贈品數量有限，送完為止，主辦單位保留更換等值贈品之權利。",
-            "VOLARE 行動飛行劇院保有活動最終解釋、修改及終止之權利。"
-        ];
 
-        // 說明事項元件 (新增 default className 避免 undefined)
-        const RulesList = ({ className = "" }) => (
-            <ul className={`text-left text-gray-800 text-sm leading-relaxed space-y-2 list-decimal list-outside pl-4 ${className}`}>
-                {RULES_TEXT.map((rule, i) => (
-                    <li key={i}>{rule}</li>
-                ))}
-            </ul>
-        );
+        function ParticleField() {
+            const [particles, setParticles] = useState([]);
+            useEffect(() => {
+                const count = 15;
+                const newParticles = Array.from({ length: count }).map((_, i) => ({
+                    id: i,
+                    left: `${Math.random() * 100}%`,
+                    size: `${Math.random() * 5 + 2}px`,
+                    delay: `${Math.random() * 5}s`,
+                    duration: `${Math.random() * 3 + 4}s`
+                }));
+                setParticles(newParticles);
+            }, []);
+            return (
+                <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+                    {particles.map(p => (
+                        <div key={p.id} className="gold-particle" style={{
+                            left: p.left,
+                            width: p.size,
+                            height: p.size,
+                            animationDelay: p.delay,
+                            animationDuration: p.duration
+                        }} />
+                    ))}
+                </div>
+            );
+        }
 
         function App() {
           const [state, setState] = useState('START'); 
           const [fortune, setFortune] = useState(null);
           const [discount, setDiscount] = useState(null);
           const [isRedeemed, setIsRedeemed] = useState(false);
-          const [showCopyTip, setShowCopyTip] = useState(false);
-          const [tipMessage, setTipMessage] = useState("已複製");
           const [showRules, setShowRules] = useState(false);
-          const [isDrawFlow, setIsDrawFlow] = useState(false); 
-          const [isSharing, setIsSharing] = useState(false); // 狀態: 是否正在產生截圖
-          
+          const [isSharing, setIsSharing] = useState(false);
           const fortuneRef = useRef(null);
           
-          // Firebase State
-          const [fbContext, setFbContext] = useState(null);
-          const [userIP, setUserIP] = useState(null);
-          const initRan = useRef(false);
-
-          const TOP_LOGO_URL = "https://elenorechen.github.io/lunarnewyear.github.io/website_logo.png";
-          const BACKGROUND_URL = "https://elenorechen.github.io/lunarnewyear.github.io/04.jpg"; 
           const HERO_IMAGE_URL = "https://elenorechen.github.io/lunarnewyear.github.io/volare_newyearthumb.jpg"; 
+          const BG_URL = "https://elenorechen.github.io/lunarnewyear.github.io/04.jpg";
 
-          // 1. 初始化與還原
           useEffect(() => {
-            const localData = localStorage.getItem('2026_fortune_record');
+            const localData = localStorage.getItem('2026_fortune_record_v2');
             if (localData) {
-                try {
-                    const record = JSON.parse(localData);
-                    if (record && typeof record.fortuneIndex === 'number' && record.discount) {
-                        setFortune(FORTUNES[record.fortuneIndex]);
-                        setDiscount(record.discount);
-                        setIsRedeemed(record.isRedeemed || false);
-                        setState('RESULT');
-                        return;
-                    }
-                    if (record && record.fortune && typeof record.fortune === 'object' && record.fortuneIndex === undefined) {
-                        localStorage.removeItem('2026_fortune_record');
-                    }
-                } catch(e) {
-                    localStorage.removeItem('2026_fortune_record');
-                }
+                const record = JSON.parse(localData);
+                setFortune(FORTUNES[record.fortuneIndex]);
+                setDiscount(record.discount);
+                setIsRedeemed(record.isRedeemed);
+                setState('RESULT');
             }
-
-            if (initRan.current) return;
-            initRan.current = true;
-
-            const init = async () => {
-              let ip = 'unknown';
-              try {
-                const res = await fetch('https://api.ipify.org?format=json');
-                const data = await res.json();
-                ip = data.ip;
-              } catch (e) {}
-              setUserIP(ip);
-
-              const GLOBAL_FB_KEY = '__2026_FORTUNE_FB_PROMISE_V10__';
-              if (window[GLOBAL_FB_KEY]) {
-                  try {
-                      const fb = await window[GLOBAL_FB_KEY];
-                      if (fb) setFbContext(fb);
-                  } catch(e) {}
-              }
-            };
-            init();
           }, []);
-
-          // 2. 背景檢查 DB
-          useEffect(() => {
-            if (state !== 'START') return;
-            if (!userIP || userIP === 'unknown') return;
-            if (!fbContext) return;
-
-            const checkRecord = async () => {
-                try {
-                  const { db, appId, doc, getDoc } = fbContext;
-                  const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'draw_records', userIP);
-                  const docSnap = await getDoc(docRef);
-                  if (docSnap.exists()) {
-                    const record = docSnap.data();
-                    if (typeof record.fortuneIndex === 'number') {
-                        setFortune(FORTUNES[record.fortuneIndex]);
-                        setDiscount(record.discount);
-                        setIsRedeemed(record.isRedeemed || false);
-                        setState('RESULT');
-                        localStorage.setItem('2026_fortune_record', JSON.stringify(record));
-                    }
-                  }
-                } catch (e) {}
-            };
-            checkRecord();
-          }, [fbContext, userIP, state]);
-
-          const handleStartClick = () => {
-              setIsDrawFlow(true); 
-              setShowRules(true);  
-          };
-
-          const confirmDraw = () => {
-              setShowRules(false);
-              setIsDrawFlow(false);
-              drawFortune();
-          };
-
-          const drawWithWeight = () => {
-            const pool = DISCOUNTS;
-            const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
-            let random = Math.random() * totalWeight;
-            
-            for (const item of pool) {
-                if (random < item.weight) {
-                    return item;
-                }
-                random -= item.weight;
-            }
-            return pool[pool.length - 1]; 
-          };
 
           const drawFortune = () => {
             setState('ANIMATING');
-            setShowCopyTip(false);
-            
-            setTimeout(async () => {
-              const randomIndex = Math.floor(Math.random() * FORTUNES.length);
-              const newFortune = FORTUNES[randomIndex];
-              const newDiscount = drawWithWeight();
-              
-              setFortune(newFortune);
-              setDiscount(newDiscount);
-              setIsRedeemed(false);
-
-              const record = {
-                fortuneIndex: randomIndex,
-                discount: newDiscount,
-                timestamp: new Date().toISOString(),
-                ip: userIP || 'unknown',
-                isRedeemed: false
-              };
-
-              try {
-                localStorage.setItem('2026_fortune_record', JSON.stringify(record));
-              } catch (e) {}
-
-              if (fbContext && fbContext.db && userIP && userIP !== 'unknown') {
-                try {
-                  const { db, appId, setDoc, doc } = fbContext;
-                  await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'draw_records', userIP), record);
-                } catch (e) {}
+            setTimeout(() => {
+              const fIdx = Math.floor(Math.random() * FORTUNES.length);
+              // Weighted draw
+              const totalWeight = DISCOUNTS.reduce((s, i) => s + i.weight, 0);
+              let r = Math.random() * totalWeight;
+              let d = DISCOUNTS[DISCOUNTS.length - 1];
+              for (const item of DISCOUNTS) {
+                  if (r < item.weight) { d = item; break; }
+                  r -= item.weight;
               }
               
+              setFortune(FORTUNES[fIdx]);
+              setDiscount(d);
+              setIsRedeemed(false);
+              localStorage.setItem('2026_fortune_record_v2', JSON.stringify({
+                  fortuneIndex: fIdx,
+                  discount: d,
+                  isRedeemed: false,
+                  timestamp: new Date().toISOString()
+              }));
               setState('RESULT');
-            }, 3000);
+            }, 2500);
           };
 
-          const handleRedeem = async () => {
+          const handleRedeem = () => {
               if (window.confirm("是否確定要核銷？\n[為保障您的權益，請交由工作人員確認]")) {
                   setIsRedeemed(true);
-                  
-                  if (fortune && discount) {
-                      const record = {
-                          fortuneIndex: FORTUNES.indexOf(fortune),
-                          discount: discount,
-                          timestamp: new Date().toISOString(),
-                          ip: userIP || 'unknown',
-                          isRedeemed: true
-                      };
-
-                      try {
-                          const oldData = JSON.parse(localStorage.getItem('2026_fortune_record'));
-                          if(oldData && oldData.timestamp) record.timestamp = oldData.timestamp;
-                      } catch(e){}
-
-                      localStorage.setItem('2026_fortune_record', JSON.stringify(record));
-
-                      if (fbContext && fbContext.db && userIP && userIP !== 'unknown') {
-                          try {
-                              const { db, appId, setDoc, doc } = fbContext;
-                              await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'draw_records', userIP), record, { merge: true });
-                          } catch (e) {}
-                      }
-                  }
+                  const record = JSON.parse(localStorage.getItem('2026_fortune_record_v2'));
+                  record.isRedeemed = true;
+                  localStorage.setItem('2026_fortune_record_v2', JSON.stringify(record));
               }
-          };
-
-          const showTip = (msg) => {
-            setTipMessage(msg);
-            setShowCopyTip(true);
-            setTimeout(() => setShowCopyTip(false), 2500);
           };
 
           const handleShare = async () => {
-            if (!fortune || !discount || !fortuneRef.current) return;
+            if (isSharing) return;
             setIsSharing(true);
-
-            const shareText = `跟大家分享我抽到 ${discount.text}！\n快來參加活動 ${window.location.href}`;
-
             try {
-                // 使用 html2canvas 截圖
-                const canvas = await window.html2canvas(fortuneRef.current, {
-                    scale: 2, // 提高解析度
-                    backgroundColor: '#FFFDF5', // 修正：給予一個實體顏色背景，避免透明黑邊
-                    logging: false,
-                    useCORS: true // Add this line to allow cross-origin images
+                const canvas = await html2canvas(fortuneRef.current, {
+                    scale: 2,
+                    backgroundColor: '#FFFDF5',
+                    useCORS: true
                 });
-
-                canvas.toBlob(async (blob) => {
-                    if (blob) {
-                        const file = new File([blob], "fortune.png", { type: "image/png" });
-                        const shareData = {
-                            files: [file],
-                            title: '2026新春靈籤',
-                            text: shareText,
-                        };
-
-                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                            try {
-                                await navigator.share(shareData);
-                            } catch (err) {
-                                console.log("Share failed or canceled", err);
-                                // Fallback to text copy
-                                handleCopy(true); 
-                            }
-                        } else {
-                            // 瀏覽器不支援圖片分享，降級為純文字
-                            handleCopy(true);
-                        }
-                    } else {
-                         handleCopy(true);
-                    }
-                    setIsSharing(false);
-                }, 'image/png');
-
-            } catch (err) {
-                console.error("Screenshot failed", err);
-                handleCopy(true);
-                setIsSharing(false);
-            }
-          };
-
-          const handleCopy = (isFallback = false) => {
-            if (!fortune || !discount) return;
-            const text = `跟大家分享我抽到 ${discount.text}！\n快來參加活動 ${window.location.href}`;
-            
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard.writeText(text).then(() => {
-                showTip(isFallback ? "圖片分享不支援，已複製文字" : "文字已複製");
-              }).catch(err => {
-                legacyCopy(text, isFallback);
-              });
-            } else {
-              legacyCopy(text, isFallback);
-            }
-          };
-
-          const legacyCopy = (text, isFallback) => {
-            try {
-              const textArea = document.createElement("textarea");
-              textArea.value = text;
-              textArea.style.top = "0";
-              textArea.style.left = "0";
-              textArea.style.position = "fixed";
-              textArea.style.opacity = "0";
-              document.body.appendChild(textArea);
-              textArea.focus();
-              textArea.select();
-              const successful = document.execCommand('copy');
-              document.body.removeChild(textArea);
-              
-              if (successful) {
-                showTip(isFallback ? "圖片分享不支援，已複製文字" : "文字已複製");
-              } else {
-                showTip("複製失敗，請手動截圖");
-              }
-            } catch (err) {
-              showTip("複製失敗，請手動截圖");
-            }
+                const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+                const file = new File([blob], "fortune.png", { type: "image/png" });
+                
+                if (navigator.share && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: 'VOLARE 2026 開運靈籤',
+                        text: `我抽到了：${discount.text}！你也來試試手氣吧！`
+                    });
+                } else {
+                    const link = document.createElement('a');
+                    link.download = 'volare_fortune.png';
+                    link.href = canvas.toDataURL();
+                    link.click();
+                }
+            } catch (e) { console.error(e); }
+            setIsSharing(false);
           };
 
           return (
-            <div className="min-h-screen bg-[#8B0000] flex flex-col items-center justify-center p-4 font-serif overflow-hidden relative">
+            <div className="min-h-screen bg-[#8B0000] flex flex-col items-center relative overflow-x-hidden">
+              <ParticleField />
               
               {/* 背景圖案 */}
-              <div className="absolute inset-0 pointer-events-none">
-                {BACKGROUND_URL ? (
-                    <img 
-                        src={BACKGROUND_URL} 
-                        alt="Background Pattern" 
-                        className="w-full h-full object-cover opacity-20" 
-                    />
-                ) : (
-                    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" className="opacity-20">
-                      <pattern id="cloud" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-                         <path d="M20,50 Q35,35 50,50 T80,50" fill="none" stroke="#FFD700" strokeWidth="2"/>
-                         <path d="M10,80 Q35,65 60,80 T100,80" fill="none" stroke="#FFD700" strokeWidth="2"/>
-                      </pattern>
-                      <rect width="100%" height="100%" fill="url(#cloud)"/>
-                    </svg>
-                )}
+              <div className="absolute inset-0 opacity-10 pointer-events-none z-0">
+                  <img src={BG_URL} className="w-full h-full object-cover" />
               </div>
 
-              {/* 標題與 Logo 區域替換為單張圖片 */}
-              {state === 'START' && (
-                  <div className="z-10 w-full max-w-lg mx-auto mb-8 mt-8 md:mt-12 px-4">
-                      <img 
+              {/* 固定標題/主視覺 */}
+              <header className={`w-full max-w-lg transition-all duration-700 z-10 ${state === 'RESULT' ? 'mt-4' : 'mt-8 md:mt-12'}`}>
+                  <div className="px-6">
+                    <img 
                         src={HERO_IMAGE_URL} 
-                        alt="新春主視覺" 
-                        className="w-full h-auto object-contain drop-shadow-xl" 
-                      />
+                        alt="VOLARE 2026" 
+                        className={`w-full h-auto rounded-xl shadow-2xl border-2 border-yellow-500/50 transition-transform ${state === 'RESULT' ? 'scale-90' : 'scale-100'}`} 
+                    />
                   </div>
-              )}
+              </header>
 
-              {/* 互動區 */}
-              <div className="z-10 w-full max-w-md flex flex-col items-center justify-center relative mx-auto my-8">
+              {/* 主要互動區域 */}
+              <main className="flex-1 w-full max-w-md flex flex-col items-center justify-start py-8 px-4 z-10">
                 
                 {state === 'START' && (
-                  <div className="flex flex-col items-center justify-center w-full h-full animate-fade-in">
-                    <div 
-                      className="cursor-pointer group relative transition-transform hover:scale-105 active:scale-95"
-                      onClick={handleStartClick}
-                    >
-                      <div className="w-40 h-64 bg-gradient-to-r from-neutral-800 to-neutral-700 rounded-t-lg rounded-b-3xl border-4 border-yellow-600 relative flex justify-center shadow-2xl mx-auto">
-                        <div className="absolute top-4 w-full h-8 bg-black/30 border-y border-yellow-600/50"></div>
-                        <div className="absolute bottom-10 w-full h-20 bg-red-900/80 flex items-center justify-center border-y-2 border-yellow-500">
-                           <div className="w-16 h-16 border-2 border-yellow-500 rotate-45 flex items-center justify-center">
-                              <span className="text-yellow-400 font-bold text-2xl -rotate-45">簽</span>
-                           </div>
+                  <div className="flex flex-col items-center animate-fade-in-up">
+                    <div className="relative mb-12 group cursor-pointer" onClick={drawFortune}>
+                        {/* 籤桶視覺優化 */}
+                        <div className="w-48 h-72 relative">
+                            {/* 籤桶本體 */}
+                            <div className="absolute inset-0 bg-gradient-to-b from-red-700 via-red-800 to-black rounded-t-lg rounded-b-[40px] border-4 border-yellow-500 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
+                                {/* 裝飾雲紋 */}
+                                <div className="absolute top-4 left-0 w-full h-8 opacity-30 border-y border-yellow-400"></div>
+                                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-20 h-20 border-2 border-yellow-500 rotate-45 flex items-center justify-center">
+                                    <span className="text-yellow-400 font-black text-4xl -rotate-45">靈</span>
+                                </div>
+                            </div>
+                            {/* 籤支 */}
+                            <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex gap-1 items-end">
+                                <div className="w-2.5 h-20 bg-[#f3e5ab] border border-yellow-800 rounded-t transform -rotate-12"></div>
+                                <div className="w-2.5 h-24 bg-[#f3e5ab] border border-yellow-800 rounded-t transform -rotate-3 z-10"></div>
+                                <div className="w-2.5 h-22 bg-[#f3e5ab] border border-yellow-800 rounded-t transform rotate-6"></div>
+                            </div>
                         </div>
-                        <div className="absolute -top-8 w-2 h-12 bg-yellow-100 border border-yellow-700 rounded-t transform -rotate-12 left-10"></div>
-                        <div className="absolute -top-6 w-2 h-10 bg-yellow-100 border border-yellow-700 rounded-t transform rotate-6 right-12"></div>
-                        <div className="absolute -top-10 w-2 h-14 bg-yellow-100 border border-yellow-700 rounded-t transform -rotate-3 left-16 z-0"></div>
-                      </div>
-                      
-                      <div className="mt-8 px-8 py-3 bg-gradient-to-r from-yellow-500 to-yellow-700 text-white text-xl font-bold rounded-full shadow-lg border-2 border-yellow-300 flex items-center gap-2 group-hover:shadow-[0_0_20px_rgba(255,215,0,0.6)] transition-all mx-auto">
-                        <Sparkles className="w-5 h-5 animate-pulse" />
-                        點擊求籤
-                        <Sparkles className="w-5 h-5 animate-pulse" />
-                      </div>
+                        
+                        <div className="mt-8 px-10 py-4 bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-600 text-red-900 font-black text-2xl rounded-full shadow-[0_0_20px_rgba(255,215,0,0.5)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3 border-2 border-white">
+                            <Sparkles className="w-6 h-6 animate-pulse" />
+                            立即求籤
+                            <Sparkles className="w-6 h-6 animate-pulse" />
+                        </div>
                     </div>
                   </div>
                 )}
 
                 {state === 'ANIMATING' && (
-                  <div className="flex flex-col items-center justify-center w-full h-full">
-                    <div className="animate-shake w-40 h-64 bg-gradient-to-r from-neutral-800 to-neutral-700 rounded-t-lg rounded-b-3xl border-4 border-yellow-600 relative flex justify-center shadow-2xl mx-auto">
-                        <div className="absolute bottom-10 w-full h-20 bg-red-900/80 flex items-center justify-center border-y-2 border-yellow-500">
-                           <div className="w-16 h-16 border-2 border-yellow-500 rotate-45 flex items-center justify-center">
-                              <span className="text-yellow-400 font-bold text-2xl -rotate-45">運</span>
-                           </div>
-                        </div>
-                        <div className="absolute -top-10 left-1/2 -translate-x-1/2">
-                           <div className="flex gap-2 animate-bounce">
-                             <div className="w-2 h-16 bg-yellow-100 border border-yellow-700 rounded-t"></div>
-                             <div className="w-2 h-12 bg-yellow-100 border border-yellow-700 rounded-t mt-4"></div>
-                             <div className="w-2 h-14 bg-yellow-100 border border-yellow-700 rounded-t mt-2"></div>
-                           </div>
-                        </div>
+                  <div className="flex flex-col items-center justify-center pt-20">
+                    <div className="animate-shake w-48 h-72 bg-gradient-to-b from-red-700 to-black rounded-t-lg rounded-b-[40px] border-4 border-yellow-500 relative shadow-2xl">
+                         <div className="absolute -top-16 left-1/2 -translate-x-1/2 flex gap-1 items-end animate-bounce">
+                                <div className="w-3 h-24 bg-[#f3e5ab] border border-yellow-800 rounded-t"></div>
+                                <div className="w-3 h-28 bg-[#f3e5ab] border border-yellow-800 rounded-t"></div>
+                                <div className="w-3 h-24 bg-[#f3e5ab] border border-yellow-800 rounded-t"></div>
+                         </div>
+                         <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-yellow-400 font-black text-5xl opacity-20">運</span>
+                         </div>
                     </div>
-                    <p className="mt-8 text-yellow-300 text-xl font-bold animate-pulse text-center">誠心祈求中...</p>
+                    <p className="mt-12 text-yellow-300 text-2xl font-black tracking-widest animate-pulse">誠心祈求中...</p>
                   </div>
                 )}
 
                 {state === 'RESULT' && fortune && (
-                  <div className="animate-pop-in w-full max-w-sm bg-[#FFFDF5] rounded-lg shadow-[0_0_40px_rgba(255,215,0,0.3)] overflow-hidden border-8 border-double border-red-800 relative flex flex-col mx-auto">
-                    <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-red-800 rounded-tl-lg z-10 pointer-events-none"></div>
-                    <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-red-800 rounded-tr-lg z-10 pointer-events-none"></div>
-                    <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-red-800 rounded-bl-lg z-10 pointer-events-none"></div>
-                    <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-red-800 rounded-br-lg z-10 pointer-events-none"></div>
+                  <div className="animate-fade-in-up w-full">
+                    {/* 籤詩卡片 */}
+                    <div ref={fortuneRef} className="bg-[#FFFDF5] rounded-xl shadow-2xl border-[12px] border-double border-red-800 overflow-hidden relative">
+                        {/* 內嵌主視覺浮水印 */}
+                        <div className="absolute top-0 left-0 w-full h-full opacity-[0.03] pointer-events-none">
+                            <img src={HERO_IMAGE_URL} className="w-full h-full object-cover" />
+                        </div>
 
-                    <div className="p-6 pb-24 flex flex-col items-center text-center bg-[url('https://www.transparenttextures.com/patterns/rice-paper.png')]">
-                      
-                      {/* --- 截圖區塊開始 (Ref) --- */}
-                      <div ref={fortuneRef} className="w-full flex flex-col items-center bg-[#FFFDF5] p-2 border-4 border-double border-red-800 rounded-lg"> 
-                        {/* 運勢標籤 */}
-                        <div className="mb-4 relative shrink-0">
-                            <div className="absolute inset-0 bg-red-600 transform rotate-3 rounded blur-sm opacity-50"></div>
-                            <div className={`relative px-6 py-2 text-3xl font-bold text-white border-2 border-yellow-400 shadow-md ${
-                            fortune.level === '大吉' ? 'bg-red-600' :
-                            fortune.level === '中吉' ? 'bg-orange-600' :
-                            'bg-yellow-600'
-                            }`}>
-                            {fortune.level}
+                        <div className="p-6 flex flex-col items-center">
+                            {/* 運勢印章 */}
+                            <div className="mb-6 relative">
+                                <div className="w-20 h-20 border-4 border-red-700 rounded-lg flex items-center justify-center bg-white shadow-inner">
+                                    <span className="text-red-700 font-black text-4xl seal-font">{fortune.level}</span>
+                                </div>
+                                <div className="absolute -right-4 -bottom-4 bg-yellow-500 text-red-900 px-2 py-0.5 text-xs font-bold rounded transform rotate-12 border border-red-800">
+                                    {fortune.type}
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="flex items-center justify-center gap-2 text-red-800 mb-6 shrink-0">
-                            {fortune.icon}
-                            <span className="text-xl font-bold tracking-widest border-b-2 border-red-800 pb-1">{fortune.type}籤</span>
-                        </div>
+                            <h2 className="text-3xl font-black text-gray-900 mb-8 tracking-[0.3em] border-b-2 border-red-800 pb-2">{fortune.title}</h2>
 
-                        <h2 className="text-2xl font-bold text-black mb-6 tracking-[0.2em] shrink-0">{fortune.title}</h2>
+                            <div className="space-y-4 mb-8">
+                                {fortune.poem.map((line, idx) => (
+                                    <p key={idx} className="text-xl font-bold text-gray-800 tracking-widest text-center">{line}</p>
+                                ))}
+                            </div>
 
-                        <div className="w-full space-y-3 mb-6 shrink-0">
-                            {fortune.poem.map((line, idx) => (
-                            <p key={idx} className="text-lg md:text-xl font-medium text-gray-800 font-serif leading-relaxed border-l-4 border-red-800/20 pl-4 text-left mx-auto max-w-[80%]">
-                                {line}
-                            </p>
-                            ))}
-                        </div>
-                        
-                        <div className="w-16 h-0.5 bg-red-800/30 mb-4 shrink-0"></div>
+                            <div className="w-full bg-red-50 p-4 rounded-lg border-l-4 border-red-700 mb-6">
+                                <p className="text-red-900 leading-relaxed text-sm">
+                                    <span className="font-black bg-red-700 text-white px-2 py-0.5 mr-2 rounded">解曰</span>
+                                    {fortune.desc}
+                                </p>
+                            </div>
 
-                        <div className="bg-red-50 p-4 rounded text-left w-full border border-red-100 mb-4 shrink-0">
-                            <p className="text-red-900 text-sm md:text-base leading-relaxed">
-                            <span className="font-bold bg-red-200 px-1 rounded text-red-800 mr-2">解曰</span>
-                            {fortune.desc}
-                            </p>
-                        </div>
-                      </div>
-                      {/* --- 截圖區塊結束 --- */}
-
-                      {/* 折扣顯示區 (含核銷功能) */}
-                      {discount && (
-                        <div className={`w-full mb-4 shrink-0 animate-fade-in ${isRedeemed ? 'opacity-70 grayscale' : ''}`} style={{animationDelay: '0.3s'}}>
-                          <div className={`relative overflow-hidden rounded-lg border-2 ${isRedeemed ? 'border-gray-400 bg-gray-100' : (discount.weight === 1 ? 'border-yellow-400 bg-red-600' : 'border-red-200 bg-white')} shadow-md p-3`}>
-                            {/* 閃光特效 */}
-                            {!isRedeemed && discount.weight === 1 && (
-                              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse pointer-events-none"></div>
-                            )}
-                            
-                            <div className="flex items-center gap-3">
-                              <div className={`p-2 rounded-full ${isRedeemed ? 'bg-gray-300 text-gray-500' : (discount.weight === 1 ? 'bg-yellow-400 text-red-700' : 'bg-red-100 text-red-600')}`}>
-                                <Gift className="w-6 h-6" />
-                              </div>
-                              <div className="text-left flex-1">
-                                <div className={`text-xs font-bold mb-0.5 ${isRedeemed ? 'text-gray-500' : (discount.weight === 1 ? 'text-yellow-300' : 'text-red-400')}`}>
-                                  {isRedeemed ? '已使用' : '新春加碼紅包 (限當次使用)'}
-                                </div>
-                                <div className={`text-xl font-bold ${isRedeemed ? 'text-gray-600 line-through' : (discount.weight === 1 ? 'text-white' : 'text-red-800')}`}>
-                                  {discount.text}
-                                </div>
-                                {/* 獎項備註 */}
-                                {discount.note && (
-                                    <div className="text-xs text-gray-500 mt-1">
-                                        {discount.note}
+                            {/* 加強後的獎項區 */}
+                            {discount && (
+                                <div className={`w-full relative transition-all ${isRedeemed ? 'opacity-50 grayscale' : ''}`}>
+                                    <div className="absolute -inset-1 bg-gradient-to-r from-yellow-600 via-yellow-300 to-yellow-600 rounded-xl blur opacity-30 animate-pulse"></div>
+                                    <div className={`relative bg-gradient-to-r from-red-600 to-red-800 text-white p-4 rounded-xl shadow-xl border-2 border-yellow-400 ${!isRedeemed ? 'animate-shine' : ''}`}>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-yellow-400 p-2 rounded-full text-red-800 shadow-md">
+                                                    <Gift className="w-6 h-6" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-yellow-300 uppercase tracking-tighter">New Year Special</p>
+                                                    <h3 className="text-2xl font-black text-white">{discount.text}</h3>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                {isRedeemed ? (
+                                                    <div className="bg-gray-800/50 px-3 py-1 rounded text-xs font-bold flex items-center gap-1">
+                                                        <CheckCircle className="w-3 h-3" /> 已核銷
+                                                    </div>
+                                                ) : (
+                                                    <button 
+                                                        onClick={handleRedeem}
+                                                        className="bg-yellow-400 text-red-900 px-3 py-1.5 rounded-lg text-xs font-black shadow-lg hover:bg-white active:scale-95 transition-all"
+                                                    >
+                                                        核銷點我
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="mt-2 text-[10px] text-yellow-200/80 border-t border-white/20 pt-2 flex justify-between">
+                                            <span>期限: 2026/03/01</span>
+                                            <span>{discount.note}</span>
+                                        </div>
                                     </div>
-                                )}
-                                {/* 優惠期限 */}
-                                <div className="text-xs text-red-800/70 mt-0.5 font-medium">
-                                    優惠使用期限：2026/3/1
                                 </div>
-                              </div>
-                            </div>
-
-                            {/* 核銷按鈕區 */}
-                            <div className="mt-2 pt-2 border-t border-dashed border-gray-300 flex justify-end">
-                                {isRedeemed ? (
-                                    <span className="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-1 rounded">已核銷</span>
-                                ) : (
-                                    <button 
-                                        onClick={handleRedeem}
-                                        className={`text-xs font-bold px-3 py-1.5 rounded border transition-colors ${discount.weight === 1 
-                                            ? 'bg-yellow-400 text-red-900 border-yellow-500 hover:bg-yellow-300' 
-                                            : 'bg-white text-red-600 border-red-300 hover:bg-red-50'}`}
-                                    >
-                                        工作人員核銷
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* 裝飾印章 */}
-                            <div className="absolute -right-2 -bottom-2 w-16 h-16 border-4 border-red-500/20 rounded-full flex items-center justify-center transform -rotate-12 pointer-events-none">
-                               <span className="text-red-500/20 font-bold text-xs">{isRedeemed ? '已兌換' : '大吉大利'}</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex flex-col w-full gap-3 mt-auto shrink-0 relative z-20">
-                        
-                        {showCopyTip && (
-                           <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-gray-900/90 text-white text-sm py-2 px-4 rounded-lg whitespace-nowrap animate-fade-in shadow-xl z-50 flex items-center gap-2">
-                             <Check className="w-4 h-4 text-green-400" />
-                             {tipMessage}
-                           </div>
-                         )}
-
-                        <div className="flex gap-2 w-full">
-                          <button 
-                            onClick={handleShare}
-                            className={`flex-1 ${isSharing ? 'bg-gray-400' : 'bg-yellow-500 hover:bg-yellow-600'} text-red-900 font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-colors`}
-                            disabled={isSharing}
-                          >
-                            {isSharing ? '產生圖片中...' : (
-                                <>
-                                <Share2 className="w-5 h-5" />
-                                分享好運
-                                </>
                             )}
-                          </button>
-
-                          <button 
-                            onClick={() => handleCopy(false)}
-                            className="bg-red-100 hover:bg-red-200 text-red-800 font-bold py-2 px-3 rounded-lg flex items-center justify-center shadow-sm transition-colors"
-                            title="複製籤文"
-                          >
-                             <Copy className="w-5 h-5" />
-                          </button>
                         </div>
-                      </div>
+                    </div>
 
-                      {/* 在結果頁面底部再次顯示注意事項 */}
-                      <div className="mt-6 w-full text-center">
-                           <div className="bg-white/50 p-4 rounded-lg border border-red-200">
-                               <h4 className="font-bold text-red-800 mb-2 flex items-center justify-center gap-1">
-                                   <Info className="w-4 h-4" />
-                                   活動注意事項
-                               </h4>
-                               <RulesList className="text-xs" />
-                           </div>
-                      </div>
+                    {/* 操作按鈕 */}
+                    <div className="mt-8 flex gap-3">
+                        <button 
+                            onClick={handleShare}
+                            disabled={isSharing}
+                            className="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-red-900 font-black py-4 rounded-xl shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all border-b-4 border-yellow-800 disabled:opacity-50"
+                        >
+                            <Share2 className="w-6 h-6" />
+                            {isSharing ? '圖片生成中...' : '分享好運氣'}
+                        </button>
+                    </div>
 
+                    {/* 底部說明 */}
+                    <div className="mt-8 bg-black/20 backdrop-blur-md rounded-xl p-6 border border-yellow-500/30">
+                        <h4 className="text-yellow-400 font-black mb-3 flex items-center gap-2">
+                            <Info className="w-5 h-5" /> 活動須知
+                        </h4>
+                        <ul className="text-white/80 text-xs space-y-2 list-decimal list-inside pl-1">
+                            <li>本活動優惠僅限現場核銷使用，請由工作人員操作，自行點擊核銷或截圖皆視為無效。</li>
+                            <li>每人限參加乙次，優惠券限 2026/3/1 前使用有效。</li>
+                            <li>優惠不得與其他折扣併用，亦不得要求折現或更換其他商品。</li>
+                            <li>VOLARE 行動飛行劇院保有最終解釋權。</li>
+                        </ul>
                     </div>
                   </div>
                 )}
-              </div>
+              </main>
 
-              {/* 活動注意事項 & 版權 (移至最下方) */}
-              {state === 'START' && (
-                  <div className="mt-8 text-center z-10 w-full max-w-sm mx-auto flex flex-col items-center gap-4">
-                      <button 
-                          onClick={() => setShowRules(true)}
-                          className="flex items-center gap-1.5 text-yellow-300/80 hover:text-yellow-200 text-xs border border-yellow-500/30 rounded-full px-3 py-1 bg-black/20 backdrop-blur-sm transition-colors"
-                      >
-                          <Info className="w-3.5 h-3.5" />
-                          活動注意事項
-                      </button>
+              {/* 頁尾 */}
+              <footer className="w-full text-center py-8 z-10">
+                   {state === 'START' && (
+                        <button onClick={() => setShowRules(true)} className="text-yellow-500/60 text-xs underline mb-4">
+                            完整活動細則
+                        </button>
+                   )}
+                   <div className="text-yellow-600/40 text-[10px] tracking-widest">
+                        © 2026 VOLARE 行動飛行劇院丙午年春節限定 · ALL RIGHTS RESERVED
+                   </div>
+              </footer>
 
-                      <div className="text-yellow-500/40 text-xs">
-                        © 2026 VOLARE 行動飛行劇院丙午年春節限定 · 祝您新春愉快 萬事如意
-                      </div>
-                  </div>
-              )}
-
-              {/* 注意事項 Modal */}
+              {/* 規則彈窗 */}
               {showRules && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                      {/* 背景遮罩 */}
-                      <div 
-                          className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-fade-in"
-                          onClick={() => {
-                              setShowRules(false);
-                              if(isDrawFlow) setIsDrawFlow(false);
-                          }}
-                      ></div>
-                      
-                      {/* 視窗本體 */}
-                      <div className="bg-white w-full max-w-md rounded-xl shadow-2xl relative z-10 animate-pop-in overflow-hidden border-4 border-red-800">
-                          {/* 標題 */}
-                          <div className="bg-red-800 text-yellow-400 p-4 flex justify-between items-center">
-                              <h3 className="font-bold text-lg flex items-center gap-2">
-                                  <Info className="w-5 h-5" />
-                                  活動注意事項
-                              </h3>
-                              <button onClick={() => {
-                                  setShowRules(false);
-                                  if(isDrawFlow) setIsDrawFlow(false);
-                              }} className="text-yellow-400/80 hover:text-white transition-colors">
-                                  <X className="w-6 h-6" />
-                              </button>
+                  <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setShowRules(false)}>
+                      <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden border-4 border-red-800" onClick={e => e.stopPropagation()}>
+                          <div className="bg-red-800 p-4 text-yellow-400 font-black text-center text-xl">
+                              2026 新春開運指南
                           </div>
-                          
-                          {/* 內容 */}
-                          <div className="p-6 text-gray-800 text-sm leading-relaxed space-y-3 max-h-[60vh] overflow-y-auto">
-                              <RulesList />
+                          <div className="p-6 text-gray-700 text-sm leading-relaxed space-y-3">
+                             <p>本活動優惠僅限現場核銷使用，請由工作人員操作，自行點擊核銷或截圖皆視為無效。</p>
+                             <p>每人限參加一次，優惠券限 2026/3/1 前使用有效。請在結帳前出示畫面給工作人員。</p>
+                             <p>優惠不得與其他折扣併用，亦不得要求折現或更換其他商品。</p>
+                             <p>贈品數量有限，送完為止，主辦單位保留更換等值贈品之權利。</p>
                           </div>
-
-                          {/* 底部按鈕區 (根據是否為抽籤流程切換) */}
-                          <div className="p-4 bg-gray-50 border-t border-gray-200 text-center">
-                              {isDrawFlow ? (
-                                  <div className="flex flex-col gap-3">
-                                      <p className="text-xs text-gray-500 font-medium">
-                                          我已詳閱並同意以上說明
-                                      </p>
-                                      <button 
-                                          onClick={confirmDraw}
-                                          className="bg-red-800 hover:bg-red-900 text-white px-6 py-3 rounded-lg font-bold text-lg transition-colors w-full flex items-center justify-center gap-2 shadow-lg"
-                                      >
-                                          <Sparkles className="w-5 h-5" />
-                                          看籤詩
-                                      </button>
-                                  </div>
-                              ) : (
-                                  <button 
-                                      onClick={() => setShowRules(false)}
-                                      className="bg-stone-200 hover:bg-stone-300 text-stone-700 px-6 py-2 rounded-lg font-bold transition-colors w-full"
-                                  >
-                                      我已了解
-                                  </button>
-                              )}
-                          </div>
+                          <button onClick={() => setShowRules(false)} className="w-full bg-gray-100 py-4 font-bold text-gray-500 hover:bg-gray-200 transition-colors">
+                              關閉視窗
+                          </button>
                       </div>
                   </div>
               )}
-
             </div>
           );
         }
