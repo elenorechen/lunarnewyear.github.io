@@ -20,6 +20,9 @@
     
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 html2canvas (用於截圖) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <!-- 自定義字型與動畫樣式 -->
     <style>
@@ -120,6 +123,7 @@
                     }
 
                     if (db) {
+                        // Background Auth
                         onAuthStateChanged(auth, async (user) => {
                             if (!user) {
                                 try {
@@ -131,6 +135,7 @@
                                 } catch (e) {}
                             }
                         });
+                        // Resolve immediately with available parts
                         resolve({ db, appId, auth, doc, getDoc, setDoc, collection });
                     } else {
                         resolve(null);
@@ -225,6 +230,9 @@
           const [tipMessage, setTipMessage] = useState("已複製");
           const [showRules, setShowRules] = useState(false);
           const [isDrawFlow, setIsDrawFlow] = useState(false); 
+          const [isSharing, setIsSharing] = useState(false); // 狀態: 是否正在產生截圖
+          
+          const fortuneRef = useRef(null);
           
           // Firebase State
           const [fbContext, setFbContext] = useState(null);
@@ -403,31 +411,60 @@
           };
 
           const handleShare = async () => {
-            if (!fortune || !discount) return;
-            const shareData = {
-              title: `2026新春靈籤 - ${fortune.title}`,
-              text: `我在2026新春靈籤求到了「${fortune.level}」！\n\n【${fortune.title}】\n${fortune.poem.join('\n')}\n\n★ 新春加碼：${discount.text} (${discount.desc})\n\n解曰：${fortune.desc}\n\n快來求一支你的專屬靈籤吧！`,
-              url: window.location.href
-            };
+            if (!fortune || !discount || !fortuneRef.current) return;
+            setIsSharing(true);
 
-            if (navigator.share) {
-              try {
-                await navigator.share(shareData);
-              } catch (err) {
+            const shareText = `跟大家分享我抽到 ${discount.text}！\n快來參加活動 ${window.location.href}`;
+
+            try {
+                // 使用 html2canvas 截圖
+                const canvas = await window.html2canvas(fortuneRef.current, {
+                    scale: 2, // 提高解析度
+                    backgroundColor: null, // 透明背景 (雖然我們設定了紙張背景)
+                    logging: false
+                });
+
+                canvas.toBlob(async (blob) => {
+                    if (blob) {
+                        const file = new File([blob], "fortune.png", { type: "image/png" });
+                        const shareData = {
+                            files: [file],
+                            title: '2026新春靈籤',
+                            text: shareText,
+                        };
+
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            try {
+                                await navigator.share(shareData);
+                            } catch (err) {
+                                console.log("Share failed or canceled", err);
+                                // Fallback to text copy
+                                handleCopy(true); 
+                            }
+                        } else {
+                            // 瀏覽器不支援圖片分享，降級為純文字
+                            handleCopy(true);
+                        }
+                    } else {
+                         handleCopy(true);
+                    }
+                    setIsSharing(false);
+                }, 'image/png');
+
+            } catch (err) {
+                console.error("Screenshot failed", err);
                 handleCopy(true);
-              }
-            } else {
-              handleCopy(true);
+                setIsSharing(false);
             }
           };
 
           const handleCopy = (isFallback = false) => {
             if (!fortune || !discount) return;
-            const text = `【${fortune.title}】(${fortune.level})\n${fortune.poem.join('\n')}\n\n★ 新春加碼：${discount.text}\n解曰：${fortune.desc}\n#2026新春靈籤`;
+            const text = `跟大家分享我抽到 ${discount.text}！\n快來參加活動 ${window.location.href}`;
             
             if (navigator.clipboard && navigator.clipboard.writeText) {
               navigator.clipboard.writeText(text).then(() => {
-                showTip(isFallback ? "瀏覽器不支援分享，已複製籤文" : "籤文已複製");
+                showTip(isFallback ? "圖片分享不支援，已複製文字" : "文字已複製");
               }).catch(err => {
                 legacyCopy(text, isFallback);
               });
@@ -451,7 +488,7 @@
               document.body.removeChild(textArea);
               
               if (successful) {
-                showTip(isFallback ? "瀏覽器不支援分享，已複製籤文" : "籤文已複製");
+                showTip(isFallback ? "圖片分享不支援，已複製文字" : "文字已複製");
               } else {
                 showTip("複製失敗，請手動截圖");
               }
@@ -550,41 +587,45 @@
 
                     <div className="p-6 pb-24 flex flex-col items-center text-center flex-1 overflow-y-auto no-scrollbar bg-[url('https://www.transparenttextures.com/patterns/rice-paper.png')]">
                       
-                      {/* 運勢標籤 */}
-                      <div className="mb-4 relative shrink-0">
-                        <div className="absolute inset-0 bg-red-600 transform rotate-3 rounded blur-sm opacity-50"></div>
-                        <div className={`relative px-6 py-2 text-3xl font-bold text-white border-2 border-yellow-400 shadow-md ${
-                          fortune.level === '大吉' ? 'bg-red-600' :
-                          fortune.level === '中吉' ? 'bg-orange-600' :
-                          'bg-yellow-600'
-                        }`}>
-                          {fortune.level}
+                      {/* --- 截圖區塊開始 (Ref) --- */}
+                      <div ref={fortuneRef} className="w-full flex flex-col items-center bg-[url('https://www.transparenttextures.com/patterns/rice-paper.png')] p-2">
+                        {/* 運勢標籤 */}
+                        <div className="mb-4 relative shrink-0">
+                            <div className="absolute inset-0 bg-red-600 transform rotate-3 rounded blur-sm opacity-50"></div>
+                            <div className={`relative px-6 py-2 text-3xl font-bold text-white border-2 border-yellow-400 shadow-md ${
+                            fortune.level === '大吉' ? 'bg-red-600' :
+                            fortune.level === '中吉' ? 'bg-orange-600' :
+                            'bg-yellow-600'
+                            }`}>
+                            {fortune.level}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-center gap-2 text-red-800 mb-6 shrink-0">
+                            {fortune.icon}
+                            <span className="text-xl font-bold tracking-widest border-b-2 border-red-800 pb-1">{fortune.type}籤</span>
+                        </div>
+
+                        <h2 className="text-2xl font-bold text-black mb-6 tracking-[0.2em] shrink-0">{fortune.title}</h2>
+
+                        <div className="w-full space-y-3 mb-6 shrink-0">
+                            {fortune.poem.map((line, idx) => (
+                            <p key={idx} className="text-lg md:text-xl font-medium text-gray-800 font-serif leading-relaxed border-l-4 border-red-800/20 pl-4 text-left mx-auto max-w-[80%]">
+                                {line}
+                            </p>
+                            ))}
+                        </div>
+                        
+                        <div className="w-16 h-0.5 bg-red-800/30 mb-4 shrink-0"></div>
+
+                        <div className="bg-red-50 p-4 rounded text-left w-full border border-red-100 mb-4 shrink-0">
+                            <p className="text-red-900 text-sm md:text-base leading-relaxed">
+                            <span className="font-bold bg-red-200 px-1 rounded text-red-800 mr-2">解曰</span>
+                            {fortune.desc}
+                            </p>
                         </div>
                       </div>
-
-                      <div className="flex items-center justify-center gap-2 text-red-800 mb-6 shrink-0">
-                        {fortune.icon}
-                        <span className="text-xl font-bold tracking-widest border-b-2 border-red-800 pb-1">{fortune.type}籤</span>
-                      </div>
-
-                      <h2 className="text-2xl font-bold text-black mb-6 tracking-[0.2em] shrink-0">{fortune.title}</h2>
-
-                      <div className="w-full space-y-3 mb-6 shrink-0">
-                        {fortune.poem.map((line, idx) => (
-                          <p key={idx} className="text-lg md:text-xl font-medium text-gray-800 font-serif leading-relaxed border-l-4 border-red-800/20 pl-4 text-left mx-auto max-w-[80%]">
-                            {line}
-                          </p>
-                        ))}
-                      </div>
-                      
-                      <div className="w-16 h-0.5 bg-red-800/30 mb-4 shrink-0"></div>
-
-                      <div className="bg-red-50 p-4 rounded text-left w-full border border-red-100 mb-4 shrink-0">
-                        <p className="text-red-900 text-sm md:text-base leading-relaxed">
-                          <span className="font-bold bg-red-200 px-1 rounded text-red-800 mr-2">解曰</span>
-                          {fortune.desc}
-                        </p>
-                      </div>
+                      {/* --- 截圖區塊結束 --- */}
 
                       {/* 折扣顯示區 (含核銷功能) */}
                       {discount && (
@@ -655,10 +696,15 @@
                         <div className="flex gap-2 w-full">
                           <button 
                             onClick={handleShare}
-                            className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-red-900 font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-colors"
+                            className={`flex-1 ${isSharing ? 'bg-gray-400' : 'bg-yellow-500 hover:bg-yellow-600'} text-red-900 font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2 shadow-sm transition-colors`}
+                            disabled={isSharing}
                           >
-                            <Share2 className="w-5 h-5" />
-                            分享好運
+                            {isSharing ? '產生圖片中...' : (
+                                <>
+                                <Share2 className="w-5 h-5" />
+                                分享好運
+                                </>
+                            )}
                           </button>
 
                           <button 
