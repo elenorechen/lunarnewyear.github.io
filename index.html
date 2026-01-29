@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2026 丙午年新春靈籤</title>
+    <title>VOLARE 行動飛行劇院｜好運籤詩馬上到</title>
     
     <!-- 設定 Open Graph 標籤 -->
-    <meta property="og:title" content="2026 丙午年新春靈籤">
-    <meta property="og:description" content="誠心祈求，指點迷津。快來抽取您的 2026 年專屬運勢籤詩！">
+    <meta property="og:title" content="VOLARE 行動飛行劇院｜好運籤詩馬上到">
+    <meta property="og:description" content="天馬行空飛高高，好運籤詩馬上到！快來 VOLARE 行動飛行劇院抽取您的 2026 年專屬運勢籤詩！">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="https://images.unsplash.com/photo-1548685913-fe6678b42609?q=80&w=1200&auto=format&fit=crop">
+    <meta property="og:image" content="https://i.meee.com.tw/lyf83Dx.jpg">
 
     <!-- 引入 React 和 ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -241,7 +241,7 @@
 
           const TOP_LOGO_URL = "https://i.meee.com.tw/THL1ArX.png";
           const BACKGROUND_URL = "https://i.meee.com.tw/Tww694H.jpg"; 
-          const HERO_IMAGE_URL = "https://placehold.co/600x400/8B0000/FFD700?text=2026+New+Year+Hero+Image&font=serif"; 
+          const HERO_IMAGE_URL = "https://i.meee.com.tw/kMBDjg4.jpg"; 
 
           // 1. 初始化與還原
           useEffect(() => {
@@ -420,7 +420,7 @@
                 // 使用 html2canvas 截圖
                 const canvas = await window.html2canvas(fortuneRef.current, {
                     scale: 2, // 提高解析度
-                    backgroundColor: null, // 透明背景 (雖然我們設定了紙張背景)
+                    backgroundColor: '#FFFDF5', // 修正：給予一個實體顏色背景，避免透明黑邊
                     logging: false,
                     useCORS: true // Add this line to allow cross-origin images
                 });
@@ -593,7 +593,7 @@
                     <div className="p-6 pb-24 flex flex-col items-center text-center bg-[url('https://www.transparenttextures.com/patterns/rice-paper.png')]">
                       
                       {/* --- 截圖區塊開始 (Ref) --- */}
-                      <div ref={fortuneRef} className="w-full flex flex-col items-center bg-[url('https://www.transparenttextures.com/patterns/rice-paper.png')] p-2">
+                      <div ref={fortuneRef} className="w-full flex flex-col items-center bg-[#FFFDF5] p-2 border-4 border-double border-red-800 rounded-lg"> 
                         {/* 運勢標籤 */}
                         <div className="mb-4 relative shrink-0">
                             <div className="absolute inset-0 bg-red-600 transform rotate-3 rounded blur-sm opacity-50"></div>
