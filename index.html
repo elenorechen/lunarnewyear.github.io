@@ -80,13 +80,6 @@
           100% { transform: translateY(110vh) translateX(50px) rotate(360deg); opacity: 0; }
         }
 
-        /* 傳統印章質感 */
-        .seal-font {
-            writing-mode: vertical-rl;
-            text-orientation: upright;
-            letter-spacing: 0.1em;
-        }
-
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -117,18 +110,23 @@
         });
     </script>
 </head>
-<body className="antialiased">
+<body class="antialiased">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
         // --- Icons ---
+		
         const LucideIcon = ({ d, className }) => (
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
                 <path d={d} />
             </svg>
         );
+		const Briefcase = (props) => <LucideIcon {...props} d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16M2 8h20v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8zM12 12h.01" />;
+		const Heart = (props) => <LucideIcon {...props} d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />;
+		const Home = (props) => <LucideIcon {...props} d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />;
+		const Coins = (props) => <LucideIcon {...props} d="M8 6h8M8 10h8M8 14h8M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />;
         const Sparkles = (props) => <LucideIcon {...props} d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />;
         const Gift = (props) => <LucideIcon {...props} d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5M3 8h18v4H3z" />;
         const Share2 = (props) => <LucideIcon {...props} d="M18 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM6 12a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 19a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98" />;
@@ -139,7 +137,7 @@
         const DISCOUNTS = [
             { id: 'p1', text: '1 元驚喜價', weight: 1, desc: '鴻運當頭！超級大獎', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' },
             { id: 'p2', text: '買一送一', weight: 24, desc: '好事成雙！喜事連連', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' },
-            { id: 'p3', text: '票價 30% OFF, weight: 75, desc: '票價 7 折超值優惠！', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' }
+            { id: 'p3', text: '票價 30% OFF, weight: 75, desc: '票價 7 折超值優惠！', note: '適用範圍限常態片單，不得截圖或轉讓他人使用' },
         ];
 
         const FORTUNES = [
@@ -163,6 +161,7 @@
           { level: "末吉", type: "家庭", title: "除舊佈新", poem: ["舊習未除新運阻", "當思變通換門戶", "多行善事積陰德", "枯木逢春再發株"], desc: "家庭可能面臨一些變動或考驗，是改變壞習慣的好時機。", icon: <Home className="w-6 h-6" /> },
           { level: "末吉", type: "財運", title: "謹慎理財", poem: ["錢財身外莫強求", "投資失利令人憂", "安分守己勤耕作", "免得債務上心頭"], desc: "今年財運較弱，切忌借貸與高風險投資，保守儲蓄為上策。", icon: <Coins className="w-6 h-6" /> }
         ];
+
 
         function ParticleField() {
             const [particles, setParticles] = useState([]);
@@ -219,7 +218,6 @@
             setState('ANIMATING');
             setTimeout(() => {
               const fIdx = Math.floor(Math.random() * FORTUNES.length);
-              // Weighted draw
               const totalWeight = DISCOUNTS.reduce((s, i) => s + i.weight, 0);
               let r = Math.random() * totalWeight;
               let d = DISCOUNTS[DISCOUNTS.length - 1];
@@ -242,7 +240,7 @@
           };
 
           const handleRedeem = () => {
-              if (window.confirm("是否確定要核銷？\n[為保障您的權益，請交由工作人員確認]")) {
+              if (window.confirm("是否確定要核銷？為保障您的權益，請交由工作人員確認")) {
                   setIsRedeemed(true);
                   const record = JSON.parse(localStorage.getItem('2026_fortune_record_v2'));
                   record.isRedeemed = true;
@@ -289,7 +287,7 @@
 
               {/* 固定標題/主視覺 */}
               <header className={`w-full max-w-lg transition-all duration-700 z-10 ${state === 'RESULT' ? 'mt-4' : 'mt-8 md:mt-12'}`}>
-                  <div className="px-6">
+                  <div className="px-6 flex justify-center">
                     <img 
                         src={HERO_IMAGE_URL} 
                         alt="VOLARE 2026" 
@@ -302,10 +300,10 @@
               <main className="flex-1 w-full max-w-md flex flex-col items-center justify-start py-8 px-4 z-10">
                 
                 {state === 'START' && (
-                  <div className="flex flex-col items-center animate-fade-in-up">
-                    <div className="relative mb-12 group cursor-pointer" onClick={drawFortune}>
+                  <div className="w-full flex flex-col items-center animate-fade-in-up">
+                    <div className="relative mb-12 flex flex-col items-center group cursor-pointer" onClick={drawFortune}>
                         {/* 籤桶視覺優化 */}
-                        <div className="w-48 h-72 relative">
+                        <div className="w-48 h-72 relative mb-8">
                             {/* 籤桶本體 */}
                             <div className="absolute inset-0 bg-gradient-to-b from-red-700 via-red-800 to-black rounded-t-lg rounded-b-[40px] border-4 border-yellow-500 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden">
                                 {/* 裝飾雲紋 */}
@@ -322,10 +320,11 @@
                             </div>
                         </div>
                         
-                        <div className="mt-8 px-10 py-4 bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-600 text-red-900 font-black text-2xl rounded-full shadow-[0_0_20px_rgba(255,215,0,0.5)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3 border-2 border-white">
-                            <Sparkles className="w-6 h-6 animate-pulse" />
+                        {/* 置中的抽籤按鈕 */}
+                        <div className="px-10 py-4 bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-600 text-red-900 font-black text-2xl rounded-full shadow-[0_0_20px_rgba(255,215,0,0.5)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-3 border-2 border-white w-full max-w-[280px]">
+                            <LucideIcon className="w-6 h-6 animate-pulse" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
                             立即求籤
-                            <Sparkles className="w-6 h-6 animate-pulse" />
+                            <LucideIcon className="w-6 h-6 animate-pulse" d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
                         </div>
                     </div>
                   </div>
@@ -357,10 +356,15 @@
                         </div>
 
                         <div className="p-6 flex flex-col items-center">
-                            {/* 運勢印章 */}
-                            <div className="mb-6 relative">
-                                <div className="w-20 h-20 border-4 border-red-700 rounded-lg flex items-center justify-center bg-white shadow-inner">
-                                    <span className="text-red-700 font-black text-4xl seal-font">{fortune.level}</span>
+                            
+                            {/* 運勢印章 (修正文字垂直順序) */}
+                            <div className="mb-6 mt-4 relative">
+                                <div className="w-20 h-24 border-4 border-red-700 rounded-lg flex flex-col items-center justify-center bg-white shadow-inner gap-0 py-1">
+                                    {fortune.level.split('').map((char, i) => (
+                                        <span key={i} className="text-red-700 font-black text-4xl leading-tight">
+                                            {char}
+                                        </span>
+                                    ))}
                                 </div>
                                 <div className="absolute -right-4 -bottom-4 bg-yellow-500 text-red-900 px-2 py-0.5 text-xs font-bold rounded transform rotate-12 border border-red-800">
                                     {fortune.type}
@@ -390,7 +394,7 @@
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3">
                                                 <div className="bg-yellow-400 p-2 rounded-full text-red-800 shadow-md">
-                                                    <Gift className="w-6 h-6" />
+                                                    <LucideIcon className="w-6 h-6" d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5M3 8h18v4H3z" />
                                                 </div>
                                                 <div>
                                                     <p className="text-[10px] font-bold text-yellow-300 uppercase tracking-tighter">New Year Special</p>
