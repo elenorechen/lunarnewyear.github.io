@@ -421,7 +421,8 @@
                 const canvas = await window.html2canvas(fortuneRef.current, {
                     scale: 2, // 提高解析度
                     backgroundColor: null, // 透明背景 (雖然我們設定了紙張背景)
-                    logging: false
+                    logging: false,
+                    useCORS: true // Add this line to allow cross-origin images
                 });
 
                 canvas.toBlob(async (blob) => {
@@ -519,17 +520,21 @@
                 )}
               </div>
 
+              {/* 燈籠 - 已移除 */}
+
               {/* 標題與 Logo 區域替換為單張圖片 */}
-              <div className="z-10 w-full max-w-lg mx-auto mb-8 mt-8 md:mt-12 px-4">
-                  <img 
-                    src={HERO_IMAGE_URL} 
-                    alt="新春主視覺" 
-                    className="w-full h-auto object-contain drop-shadow-xl" 
-                  />
-              </div>
+              {state === 'START' && (
+                  <div className="z-10 w-full max-w-lg mx-auto mb-8 mt-8 md:mt-12 px-4">
+                      <img 
+                        src={HERO_IMAGE_URL} 
+                        alt="新春主視覺" 
+                        className="w-full h-auto object-contain drop-shadow-xl" 
+                      />
+                  </div>
+              )}
 
               {/* 互動區 */}
-              <div className="z-10 w-full max-w-md aspect-[3/4] flex flex-col items-center justify-center relative mx-auto">
+              <div className="z-10 w-full max-w-md flex flex-col items-center justify-center relative mx-auto my-8">
                 
                 {state === 'START' && (
                   <div className="flex flex-col items-center justify-center w-full h-full animate-fade-in">
@@ -579,13 +584,13 @@
                 )}
 
                 {state === 'RESULT' && fortune && (
-                  <div className="animate-pop-in w-full max-w-sm bg-[#FFFDF5] rounded-lg shadow-[0_0_40px_rgba(255,215,0,0.3)] overflow-hidden border-8 border-double border-red-800 relative flex flex-col mx-auto h-full max-h-full">
+                  <div className="animate-pop-in w-full max-w-sm bg-[#FFFDF5] rounded-lg shadow-[0_0_40px_rgba(255,215,0,0.3)] overflow-hidden border-8 border-double border-red-800 relative flex flex-col mx-auto">
                     <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-red-800 rounded-tl-lg z-10 pointer-events-none"></div>
                     <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-red-800 rounded-tr-lg z-10 pointer-events-none"></div>
                     <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-red-800 rounded-bl-lg z-10 pointer-events-none"></div>
                     <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-red-800 rounded-br-lg z-10 pointer-events-none"></div>
 
-                    <div className="p-6 pb-24 flex flex-col items-center text-center flex-1 overflow-y-auto no-scrollbar bg-[url('https://www.transparenttextures.com/patterns/rice-paper.png')]">
+                    <div className="p-6 pb-24 flex flex-col items-center text-center bg-[url('https://www.transparenttextures.com/patterns/rice-paper.png')]">
                       
                       {/* --- 截圖區塊開始 (Ref) --- */}
                       <div ref={fortuneRef} className="w-full flex flex-col items-center bg-[url('https://www.transparenttextures.com/patterns/rice-paper.png')] p-2">
