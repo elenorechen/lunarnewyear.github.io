@@ -56,13 +56,14 @@
         .animate-fade-in {
           animation: fadeIn 0.8s ease-out forwards;
         }
-        @keyframes flipIn {
-          0% { opacity: 0; transform: rotateY(90deg) scale(0.8); }
-          100% { opacity: 1; transform: rotateY(0) scale(1); }
+        
+        /* 替換原本的 flipIn 為更穩定的 popIn */
+        @keyframes popIn {
+          0% { opacity: 0; transform: scale(0.9); }
+          100% { opacity: 1; transform: scale(1); }
         }
-        .animate-flip-in {
-          animation: flipIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-          perspective: 1000px;
+        .animate-pop-in {
+          animation: popIn 0.3s ease-out forwards;
         }
         
         .no-scrollbar::-webkit-scrollbar {
@@ -74,21 +75,18 @@
         }
     </style>
 
-    <!-- Firebase SDK Setup (Using 10.13.1 for better stability) -->
+    <!-- Firebase SDK Setup (Safe Mode) -->
     <script type="module">
         import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, collection } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
-        // Global Singleton Key (V8 to ensure fresh start)
-        const GLOBAL_FB_KEY = '__2026_FORTUNE_FB_PROMISE_V8__';
+        const GLOBAL_FB_KEY = '__2026_FORTUNE_FB_PROMISE_V10__';
 
-        // 立即執行函式，建立全域 Promise
         (function() {
             if (window[GLOBAL_FB_KEY]) return;
 
             window[GLOBAL_FB_KEY] = new Promise(async (resolve) => {
-                // 0. 檢查 Config
                 if (typeof window.__firebase_config === 'undefined' || !window.__firebase_config) {
                     console.log("[App] No Firebase Config. Offline Mode.");
                     resolve(null);
@@ -98,13 +96,11 @@
                 try {
                     const firebaseConfig = JSON.parse(window.__firebase_config);
                     let app;
-                    
-                    // 1. Initialize App (Idempotent)
                     try {
                         if (getApps().length === 0) {
                             app = initializeApp(firebaseConfig);
                         } else {
-                            app = getApps()[0]; // Reuse existing app
+                            app = getApps()[0];
                         }
                     } catch (e) {
                         console.warn("[App] Firebase App Init Error:", e);
@@ -114,56 +110,34 @@
 
                     const auth = getAuth(app);
                     const appId = window.__app_id || 'default-app-id';
-
-                    // 2. Initialize Firestore (The Risky Part)
                     let db = null;
+                    
                     try {
-                        // 這裡加上最強力的捕捉，如果有任何錯誤，直接放棄 DB
                         db = getFirestore(app);
                     } catch (err) {
-                        console.warn("[App] Firestore Init Failed (Safe Fallback):", err);
+                        console.warn("[App] Firestore Init Error:", err);
                         db = null;
                     }
 
-                    // 3. Handle Auth (Optional but good to have)
                     if (db) {
-                        // 只有 DB 成功初始化才需要 Auth
-                        await new Promise((authResolve) => {
-                            // 設定一個 2 秒超時，避免 Auth 卡住
-                            const timer = setTimeout(() => authResolve(null), 2000);
-
-                            const unsubscribe = onAuthStateChanged(auth, async (user) => {
-                                clearTimeout(timer);
-                                unsubscribe();
-                                if (user) {
-                                    authResolve(user);
-                                } else {
-                                    try {
-                                        if (window.__initial_auth_token) {
-                                            await signInWithCustomToken(auth, window.__initial_auth_token);
-                                        } else {
-                                            await signInAnonymously(auth);
-                                        }
-                                    } catch (e) {
-                                        console.warn("[App] Auth Failed:", e);
+                        onAuthStateChanged(auth, async (user) => {
+                            if (!user) {
+                                try {
+                                    if (window.__initial_auth_token) {
+                                        await signInWithCustomToken(auth, window.__initial_auth_token);
+                                    } else {
+                                        await signInAnonymously(auth);
                                     }
-                                    authResolve(auth.currentUser);
-                                }
-                            });
+                                } catch (e) {}
+                            }
                         });
-                    }
-
-                    // 4. Return Result
-                    if (db && auth.currentUser) {
-                        console.log("[App] Firebase Online.");
-                        resolve({ db, appId, auth, user: auth.currentUser, doc, getDoc, setDoc, collection });
+                        resolve({ db, appId, auth, doc, getDoc, setDoc, collection });
                     } else {
-                        console.log("[App] Firebase Offline/Fallback Mode.");
                         resolve(null);
                     }
 
                 } catch (e) {
-                    console.error("[App] Fatal Firebase Error:", e);
+                    console.error("[App] Fatal Error:", e);
                     resolve(null);
                 }
             });
@@ -195,11 +169,11 @@
         // Data Configuration
         // -----------------------------------------------------------------------------
         
-        // 全場館統一獎項配置
+        // 全場館統一獎項配置 (更新)
         const DISCOUNTS = [
-            { id: 'prize_1', text: '1 元驚喜價', weight: 1, desc: '鴻運當頭！超級大獎' },
-            { id: 'prize_bogo', text: '買一送一', weight: 24, desc: '好事成雙！喜事連連' },
-            { id: 'prize_combo', text: '物販9折 & 票價7折', weight: 75, desc: '物販商品 9 折 & 常態影片票價 7 折' }
+            { id: 'prize_1', text: '1 元驚喜價', weight: 1, desc: '鴻運當頭！超級大獎', note: '適用範圍限常態片單' },
+            { id: 'prize_bogo', text: '買一送一', weight: 24, desc: '好事成雙！喜事連連', note: '適用範圍限常態片單' },
+            { id: 'prize_combo', text: '物販9折 & 票價7折', weight: 75, desc: '物販商品 9 折 & 常態影片票價 7 折', note: '適用範圍限常態片單' }
         ];
 
         const FORTUNES = [
@@ -233,8 +207,8 @@
             "VOLARE 行動飛行劇院保有活動最終解釋、修改及終止之權利。"
         ];
 
-        // 說明事項元件
-        const RulesList = ({ className }) => (
+        // 說明事項元件 (新增 default className 避免 undefined)
+        const RulesList = ({ className = "" }) => (
             <ul className={`text-left text-gray-800 text-sm leading-relaxed space-y-2 list-decimal list-outside pl-4 ${className}`}>
                 {RULES_TEXT.map((rule, i) => (
                     <li key={i}>{rule}</li>
@@ -250,7 +224,7 @@
           const [showCopyTip, setShowCopyTip] = useState(false);
           const [tipMessage, setTipMessage] = useState("已複製");
           const [showRules, setShowRules] = useState(false);
-          const [isDrawFlow, setIsDrawFlow] = useState(false); // 用於區分是點擊抽籤還是純看規則
+          const [isDrawFlow, setIsDrawFlow] = useState(false); 
           
           // Firebase State
           const [fbContext, setFbContext] = useState(null);
@@ -263,18 +237,16 @@
 
           // 1. 初始化與還原
           useEffect(() => {
-            // A. 立刻檢查 LocalStorage 還原狀態
             const localData = localStorage.getItem('2026_fortune_record');
             if (localData) {
                 try {
                     const record = JSON.parse(localData);
-                    // 檢查是否有 fortuneIndex (新版)
                     if (record && typeof record.fortuneIndex === 'number' && record.discount) {
                         setFortune(FORTUNES[record.fortuneIndex]);
                         setDiscount(record.discount);
                         setIsRedeemed(record.isRedeemed || false);
                         setState('RESULT');
-                        return; // 成功還原，直接結束
+                        return;
                     }
                     if (record && record.fortune && typeof record.fortune === 'object' && record.fortuneIndex === undefined) {
                         localStorage.removeItem('2026_fortune_record');
@@ -284,7 +256,6 @@
                 }
             }
 
-            // B. 如果沒有本地資料，繼續初始化 Firebase
             if (initRan.current) return;
             initRan.current = true;
 
@@ -297,7 +268,7 @@
               } catch (e) {}
               setUserIP(ip);
 
-              const GLOBAL_FB_KEY = '__2026_FORTUNE_FB_PROMISE_V9__';
+              const GLOBAL_FB_KEY = '__2026_FORTUNE_FB_PROMISE_V10__';
               if (window[GLOBAL_FB_KEY]) {
                   try {
                       const fb = await window[GLOBAL_FB_KEY];
@@ -308,7 +279,7 @@
             init();
           }, []);
 
-          // 2. 背景檢查 DB (僅當使用者還在 START 畫面時)
+          // 2. 背景檢查 DB
           useEffect(() => {
             if (state !== 'START') return;
             if (!userIP || userIP === 'unknown') return;
@@ -326,7 +297,6 @@
                         setDiscount(record.discount);
                         setIsRedeemed(record.isRedeemed || false);
                         setState('RESULT');
-                        // Sync to local
                         localStorage.setItem('2026_fortune_record', JSON.stringify(record));
                     }
                   }
@@ -335,13 +305,11 @@
             checkRecord();
           }, [fbContext, userIP, state]);
 
-          // 開始按鈕點擊處理
           const handleStartClick = () => {
-              setIsDrawFlow(true); // 標記為抽籤流程
-              setShowRules(true);  // 顯示規則視窗
+              setIsDrawFlow(true); 
+              setShowRules(true);  
           };
 
-          // 確認抽籤 (在 Modal 中點擊)
           const confirmDraw = () => {
               setShowRules(false);
               setIsDrawFlow(false);
@@ -349,7 +317,6 @@
           };
 
           const drawWithWeight = () => {
-            // 使用全場館統一獎池
             const pool = DISCOUNTS;
             const totalWeight = pool.reduce((sum, item) => sum + item.weight, 0);
             let random = Math.random() * totalWeight;
@@ -360,7 +327,7 @@
                 }
                 random -= item.weight;
             }
-            return pool[pool.length - 1]; // Fallback
+            return pool[pool.length - 1]; 
           };
 
           const drawFortune = () => {
@@ -377,14 +344,13 @@
               setIsRedeemed(false);
 
               const record = {
-                fortuneIndex: randomIndex, // Save Index Only
+                fortuneIndex: randomIndex,
                 discount: newDiscount,
                 timestamp: new Date().toISOString(),
                 ip: userIP || 'unknown',
                 isRedeemed: false
               };
 
-              // 儲存邏輯
               try {
                 localStorage.setItem('2026_fortune_record', JSON.stringify(record));
               } catch (e) {}
@@ -400,12 +366,10 @@
             }, 3000);
           };
 
-          // 處理核銷
           const handleRedeem = async () => {
               if (window.confirm("是否確定要核銷？\n[為保障您的權益，請交由工作人員確認]")) {
                   setIsRedeemed(true);
                   
-                  // 更新紀錄
                   if (fortune && discount) {
                       const record = {
                           fortuneIndex: FORTUNES.indexOf(fortune),
@@ -518,8 +482,6 @@
                 )}
               </div>
 
-              {/* 燈籠 - 已移除 */}
-
               {/* 標題與 Logo 區域替換為單張圖片 */}
               <div className="z-10 w-full max-w-lg mx-auto mb-8 mt-8 md:mt-12 px-4">
                   <img 
@@ -580,7 +542,7 @@
                 )}
 
                 {state === 'RESULT' && fortune && (
-                  <div className="animate-flip-in w-full max-w-sm bg-[#FFFDF5] rounded-lg shadow-[0_0_40px_rgba(255,215,0,0.3)] overflow-hidden border-8 border-double border-red-800 relative flex flex-col mx-auto h-full max-h-full">
+                  <div className="animate-pop-in w-full max-w-sm bg-[#FFFDF5] rounded-lg shadow-[0_0_40px_rgba(255,215,0,0.3)] overflow-hidden border-8 border-double border-red-800 relative flex flex-col mx-auto h-full max-h-full">
                     <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-red-800 rounded-tl-lg z-10 pointer-events-none"></div>
                     <div className="absolute top-0 right-0 w-16 h-16 border-t-4 border-r-4 border-red-800 rounded-tr-lg z-10 pointer-events-none"></div>
                     <div className="absolute bottom-0 left-0 w-16 h-16 border-b-4 border-l-4 border-red-800 rounded-bl-lg z-10 pointer-events-none"></div>
@@ -594,7 +556,7 @@
                         <div className={`relative px-6 py-2 text-3xl font-bold text-white border-2 border-yellow-400 shadow-md ${
                           fortune.level === '大吉' ? 'bg-red-600' :
                           fortune.level === '中吉' ? 'bg-orange-600' :
-                          'bg-yellow-600' // Catch all for 小吉 and 末吉
+                          'bg-yellow-600'
                         }`}>
                           {fortune.level}
                         </div>
@@ -628,7 +590,7 @@
                       {discount && (
                         <div className={`w-full mb-4 shrink-0 animate-fade-in ${isRedeemed ? 'opacity-70 grayscale' : ''}`} style={{animationDelay: '0.3s'}}>
                           <div className={`relative overflow-hidden rounded-lg border-2 ${isRedeemed ? 'border-gray-400 bg-gray-100' : (discount.weight === 1 ? 'border-yellow-400 bg-red-600' : 'border-red-200 bg-white')} shadow-md p-3`}>
-                            {/* 閃光特效 (僅限 1% 大獎且未核銷) */}
+                            {/* 閃光特效 */}
                             {!isRedeemed && discount.weight === 1 && (
                               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse pointer-events-none"></div>
                             )}
@@ -643,6 +605,16 @@
                                 </div>
                                 <div className={`text-xl font-bold ${isRedeemed ? 'text-gray-600 line-through' : (discount.weight === 1 ? 'text-white' : 'text-red-800')}`}>
                                   {discount.text}
+                                </div>
+                                {/* 獎項備註 */}
+                                {discount.note && (
+                                    <div className="text-xs text-gray-500 mt-1">
+                                        {discount.note}
+                                    </div>
+                                )}
+                                {/* 優惠期限 */}
+                                <div className="text-xs text-red-800/70 mt-0.5 font-medium">
+                                    優惠使用期限：2026/3/1
                                 </div>
                               </div>
                             </div>
@@ -739,15 +711,13 @@
                       <div 
                           className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-fade-in"
                           onClick={() => {
-                              // 如果不是在抽籤流程中，點擊背景可以關閉
-                              // 如果是抽籤流程，建議強制點擊按鈕，但為了體驗也可以允許關閉
                               setShowRules(false);
                               if(isDrawFlow) setIsDrawFlow(false);
                           }}
                       ></div>
                       
                       {/* 視窗本體 */}
-                      <div className="bg-white w-full max-w-md rounded-xl shadow-2xl relative z-10 animate-flip-in overflow-hidden border-4 border-red-800">
+                      <div className="bg-white w-full max-w-md rounded-xl shadow-2xl relative z-10 animate-pop-in overflow-hidden border-4 border-red-800">
                           {/* 標題 */}
                           <div className="bg-red-800 text-yellow-400 p-4 flex justify-between items-center">
                               <h3 className="font-bold text-lg flex items-center gap-2">
