@@ -16,7 +16,6 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&display=swap');
@@ -68,21 +67,6 @@
         }
         .animate-fade-in {
           animation: fadeIn 0.4s ease-out forwards;
-        }
-
-        /* 金粉飄落 */
-        .gold-particle {
-          position: absolute;
-          background: radial-gradient(circle, #FFD700 0%, transparent 70%);
-          border-radius: 50%;
-          pointer-events: none;
-          z-index: 5;
-          opacity: 0;
-          animation: fall linear infinite;
-        }
-        @keyframes fall {
-          0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 1; }
-          100% { transform: translateY(110vh) translateX(50px) rotate(360deg); opacity: 0; }
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -163,29 +147,6 @@
           { level: "小吉", type: "財運", title: "小有所獲", poem: ["意外之財不可貪", "踏實工作心才安", "量入為出多算計", "自有餘糧在盤餐"], desc: "有些許偏財運，但主要還是靠正財，注意收支平衡。", icon: <Coins className="w-6 h-6" /> }
         ];
 
-        function ParticleField() {
-            const [particles, setParticles] = useState([]);
-            useEffect(() => {
-                setParticles(Array.from({ length: 15 }).map((_, i) => ({
-                    id: i,
-                    left: `${Math.random() * 100}%`,
-                    size: `${Math.random() * 5 + 2}px`,
-                    delay: `${Math.random() * 5}s`,
-                    duration: `${Math.random() * 3 + 4}s`
-                })));
-            }, []);
-            return (
-                <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-                    {particles.map(p => (
-                        <div key={p.id} className="gold-particle" style={{
-                            left: p.left, width: p.size, height: p.size,
-                            animationDelay: p.delay, animationDuration: p.duration
-                        }} />
-                    ))}
-                </div>
-            );
-        }
-
         function App() {
           const [state, setState] = useState('START'); 
           const [fortune, setFortune] = useState(null);
@@ -193,7 +154,7 @@
           const [isRedeemed, setIsRedeemed] = useState(false);
           const [showRules, setShowRules] = useState(false);
           const [showRedeemConfirm, setShowRedeemConfirm] = useState(false);
-          const [isSharing, setIsSharing] = useState(false);
+          const [showCopyToast, setShowCopyToast] = useState(false);
           const fortuneRef = useRef(null);
           
           const HERO_IMAGE_URL = "https://elenorechen.github.io/lunarnewyear.github.io/volare_newyearthumb.jpg"; 
@@ -253,35 +214,40 @@
           };
 
           const handleShare = async () => {
-            if (isSharing) return;
-            setIsSharing(true);
-            try {
-                const canvas = await html2canvas(fortuneRef.current, {
-                    scale: 2, backgroundColor: '#FFFDF5', useCORS: true, logging: false
-                });
-                const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-                const file = new File([blob], "fortune.png", { type: "image/png" });
-                
-                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            const shareText = `【VOLARE 2026 行動飛行劇院】\n我的新年運勢是「${fortune.title} (${fortune.level})」！\n我還獲得了：${discount.text}！\n快來抽取你的 2026 年專屬運勢吧：\n${window.location.href}`;
+            
+            if (navigator.share) {
+                try {
                     await navigator.share({
-                        files: [file],
-                        title: 'VOLARE 2026 開運靈籤',
-                        text: `我抽到了：${discount.text}！你也來試試手氣吧！`
+                        title: 'VOLARE 2026 行動飛行劇院',
+                        text: shareText,
+                        url: window.location.href
                     });
-                } else {
-                    const link = document.createElement('a');
-                    link.download = 'volare_fortune.png';
-                    link.href = canvas.toDataURL();
-                    link.click();
+                } catch (e) {
+                    copyToClipboard(shareText);
                 }
-            } catch (e) { console.error("Share error", e); }
-            setIsSharing(false);
+            } else {
+                copyToClipboard(shareText);
+            }
+          };
+
+          const copyToClipboard = (text) => {
+              const textArea = document.createElement("textarea");
+              textArea.value = text;
+              document.body.appendChild(textArea);
+              textArea.select();
+              try {
+                  document.execCommand('copy');
+                  setShowCopyToast(true);
+                  setTimeout(() => setShowCopyToast(false), 2000);
+              } catch (err) {
+                  console.error('Copy failed', err);
+              }
+              document.body.removeChild(textArea);
           };
 
           return (
             <div className="min-h-screen bg-[#8B0000] flex flex-col items-center relative overflow-x-hidden">
-              <ParticleField />
-              
               <div className="absolute inset-0 opacity-10 pointer-events-none z-0">
                   <img src={BG_URL} className="w-full h-full object-cover" alt="bg" />
               </div>
@@ -374,7 +340,7 @@
                                                         <CheckCircle className="w-3 h-3" /> 已核銷
                                                     </div>
                                                 ) : (
-                                                    <button onClick={handleRedeem} className="bg-yellow-400 text-red-900 px-3 py-1.5 rounded-lg text-xs font-black shadow-lg hover:bg-white active:scale-95 transition-all">
+                                                    <button onClick={handleRedeem} className="bg-yellow-400 text-red-900 px-3 py-1.5 rounded-lg text-xs font-black shadow-lg hover:bg-white active:scale-95 transition-all text-[10px]">
                                                         核銷點我
                                                     </button>
                                                 )}
@@ -391,9 +357,9 @@
                     </div>
 
                     <div className="mt-8 flex gap-3">
-                        <button onClick={handleShare} disabled={isSharing} className="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-red-900 font-black py-4 rounded-xl shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all border-b-4 border-yellow-800 disabled:opacity-50">
+                        <button onClick={handleShare} className="flex-1 bg-gradient-to-r from-yellow-500 to-yellow-600 text-red-900 font-black py-4 rounded-xl shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all border-b-4 border-yellow-800">
                             <Share2 className="w-6 h-6" />
-                            {isSharing ? '圖片生成中...' : '分享好運氣'}
+                            分享好運連結
                         </button>
                     </div>
 
@@ -469,6 +435,12 @@
                               </button>
                           </div>
                       </div>
+                  </div>
+              )}
+
+              {showCopyToast && (
+                  <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] bg-yellow-400 text-red-900 px-6 py-3 rounded-full font-black shadow-2xl animate-fade-in">
+                      已複製運勢連結至剪貼簿！
                   </div>
               )}
             </div>
