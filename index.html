@@ -85,7 +85,7 @@
 
         // 立即執行函式，建立全域 Promise
         (function() {
-            if (window[GLOBAL_FB_KEY]) return; // 如果已經有在跑，就不要重複執行
+            if (window[GLOBAL_FB_KEY]) return;
 
             window[GLOBAL_FB_KEY] = new Promise(async (resolve) => {
                 // 0. 檢查 Config
@@ -188,6 +188,8 @@
         const Check = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M20 6 9 17l-5-5"/></svg>;
         const Gift = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/></svg>;
         const Stamp = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>;
+        const Info = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>;
+        const X = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
 
         // -----------------------------------------------------------------------------
         // Data Configuration
@@ -221,6 +223,24 @@
           { level: "末吉", type: "家庭", title: "除舊佈新", poem: ["舊習未除新運阻", "當思變通換門戶", "多行善事積陰德", "枯木逢春再發株"], desc: "家庭可能面臨一些變動或考驗，是改變壞習慣的好時機。", icon: <Home className="w-6 h-6" /> },
           { level: "末吉", type: "財運", title: "謹慎理財", poem: ["錢財身外莫強求", "投資失利令人憂", "安分守己勤耕作", "免得債務上心頭"], desc: "今年財運較弱，切忌借貸與高風險投資，保守儲蓄為上策。", icon: <Coins className="w-6 h-6" /> }
         ];
+        
+        // 說明事項列表
+        const RULES_TEXT = [
+            "本活動優惠僅限現場核銷使用，請由工作人員操作，自行點擊核銷或截圖皆視為無效。",
+            "每個 Facebook 帳號或裝置限參加一次，優惠券限當日有效。",
+            "優惠不得與其他折扣併用，亦不得要求折現或更換其他商品。",
+            "贈品數量有限，送完為止，主辦單位保留更換等值贈品之權利。",
+            "VOLARE 行動飛行劇院保有活動最終解釋、修改及終止之權利。"
+        ];
+
+        // 說明事項元件
+        const RulesList = ({ className }) => (
+            <ul className={`text-left text-gray-800 text-sm leading-relaxed space-y-2 list-decimal list-outside pl-4 ${className}`}>
+                {RULES_TEXT.map((rule, i) => (
+                    <li key={i}>{rule}</li>
+                ))}
+            </ul>
+        );
 
         function App() {
           const [state, setState] = useState('START'); 
@@ -229,6 +249,8 @@
           const [isRedeemed, setIsRedeemed] = useState(false);
           const [showCopyTip, setShowCopyTip] = useState(false);
           const [tipMessage, setTipMessage] = useState("已複製");
+          const [showRules, setShowRules] = useState(false);
+          const [isDrawFlow, setIsDrawFlow] = useState(false); // 用於區分是點擊抽籤還是純看規則
           
           // Firebase State
           const [fbContext, setFbContext] = useState(null);
@@ -237,7 +259,7 @@
 
           const TOP_LOGO_URL = "https://i.meee.com.tw/THL1ArX.png";
           const BACKGROUND_URL = "https://i.meee.com.tw/Tww694H.jpg"; 
-          const HERO_IMAGE_URL = "https://i.meee.com.tw/SWoqL2B.jpg"; 
+          const HERO_IMAGE_URL = "https://placehold.co/600x400/8B0000/FFD700?text=2026+New+Year+Hero+Image&font=serif"; 
 
           // 1. 初始化與還原
           useEffect(() => {
@@ -313,6 +335,18 @@
             checkRecord();
           }, [fbContext, userIP, state]);
 
+          // 開始按鈕點擊處理
+          const handleStartClick = () => {
+              setIsDrawFlow(true); // 標記為抽籤流程
+              setShowRules(true);  // 顯示規則視窗
+          };
+
+          // 確認抽籤 (在 Modal 中點擊)
+          const confirmDraw = () => {
+              setShowRules(false);
+              setIsDrawFlow(false);
+              drawFortune();
+          };
 
           const drawWithWeight = () => {
             // 使用全場館統一獎池
@@ -465,21 +499,26 @@
           return (
             <div className="min-h-screen bg-[#8B0000] flex flex-col items-center justify-center p-4 font-serif overflow-hidden relative">
               
-              {/* 燈籠 (左右) */}
-              <div className="absolute top-0 left-4 md:left-10 w-16 md:w-24 animate-bounce" style={{animationDuration: '3s'}}>
-                <div className="w-full h-20 md:h-32 bg-red-600 rounded-lg border-2 border-yellow-400 shadow-[0_0_15px_rgba(255,215,0,0.5)] flex items-center justify-center relative">
-                  <span className="text-yellow-400 font-bold text-2xl md:text-4xl writing-vertical">春</span>
-                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-1 h-4 bg-yellow-600"></div>
-                  <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-yellow-500 text-xs">|||</div>
-                </div>
+              {/* 背景圖案 */}
+              <div className="absolute inset-0 pointer-events-none">
+                {BACKGROUND_URL ? (
+                    <img 
+                        src={BACKGROUND_URL} 
+                        alt="Background Pattern" 
+                        className="w-full h-full object-cover opacity-20" 
+                    />
+                ) : (
+                    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" className="opacity-20">
+                      <pattern id="cloud" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                         <path d="M20,50 Q35,35 50,50 T80,50" fill="none" stroke="#FFD700" strokeWidth="2"/>
+                         <path d="M10,80 Q35,65 60,80 T100,80" fill="none" stroke="#FFD700" strokeWidth="2"/>
+                      </pattern>
+                      <rect width="100%" height="100%" fill="url(#cloud)"/>
+                    </svg>
+                )}
               </div>
-              <div className="absolute top-0 right-4 md:right-10 w-16 md:w-24 animate-bounce" style={{animationDuration: '4s'}}>
-                <div className="w-full h-20 md:h-32 bg-red-600 rounded-lg border-2 border-yellow-400 shadow-[0_0_15px_rgba(255,215,0,0.5)] flex items-center justify-center relative">
-                  <span className="text-yellow-400 font-bold text-2xl md:text-4xl writing-vertical">福</span>
-                  <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-1 h-4 bg-yellow-600"></div>
-                  <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-yellow-500 text-xs">|||</div>
-                </div>
-              </div>
+
+              {/* 燈籠 - 已移除 */}
 
               {/* 標題與 Logo 區域替換為單張圖片 */}
               <div className="z-10 w-full max-w-lg mx-auto mb-8 mt-8 md:mt-12 px-4">
@@ -497,7 +536,7 @@
                   <div className="flex flex-col items-center justify-center w-full h-full animate-fade-in">
                     <div 
                       className="cursor-pointer group relative transition-transform hover:scale-105 active:scale-95"
-                      onClick={drawFortune}
+                      onClick={handleStartClick}
                     >
                       <div className="w-40 h-64 bg-gradient-to-r from-neutral-800 to-neutral-700 rounded-t-lg rounded-b-3xl border-4 border-yellow-600 relative flex justify-center shadow-2xl mx-auto">
                         <div className="absolute top-4 w-full h-8 bg-black/30 border-y border-yellow-600/50"></div>
@@ -660,14 +699,102 @@
                         </div>
                       </div>
 
+                      {/* 在結果頁面底部再次顯示注意事項 */}
+                      <div className="mt-6 w-full text-center">
+                           <div className="bg-white/50 p-4 rounded-lg border border-red-200">
+                               <h4 className="font-bold text-red-800 mb-2 flex items-center justify-center gap-1">
+                                   <Info className="w-4 h-4" />
+                                   活動注意事項
+                               </h4>
+                               <RulesList className="text-xs" />
+                           </div>
+                      </div>
+
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="mt-8 text-yellow-500/40 text-xs text-center z-10">
-                © 2026 VOLARE 行動飛行劇院丙午年春節限定 · 祝您新春愉快 萬事如意
-              </div>
+              {/* 活動注意事項 & 版權 (移至最下方) */}
+              {state === 'START' && (
+                  <div className="mt-8 text-center z-10 w-full max-w-sm mx-auto flex flex-col items-center gap-4">
+                      <button 
+                          onClick={() => setShowRules(true)}
+                          className="flex items-center gap-1.5 text-yellow-300/80 hover:text-yellow-200 text-xs border border-yellow-500/30 rounded-full px-3 py-1 bg-black/20 backdrop-blur-sm transition-colors"
+                      >
+                          <Info className="w-3.5 h-3.5" />
+                          活動注意事項
+                      </button>
+
+                      <div className="text-yellow-500/40 text-xs">
+                        © 2026 VOLARE 行動飛行劇院丙午年春節限定 · 祝您新春愉快 萬事如意
+                      </div>
+                  </div>
+              )}
+
+              {/* 注意事項 Modal */}
+              {showRules && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                      {/* 背景遮罩 */}
+                      <div 
+                          className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-fade-in"
+                          onClick={() => {
+                              // 如果不是在抽籤流程中，點擊背景可以關閉
+                              // 如果是抽籤流程，建議強制點擊按鈕，但為了體驗也可以允許關閉
+                              setShowRules(false);
+                              if(isDrawFlow) setIsDrawFlow(false);
+                          }}
+                      ></div>
+                      
+                      {/* 視窗本體 */}
+                      <div className="bg-white w-full max-w-md rounded-xl shadow-2xl relative z-10 animate-flip-in overflow-hidden border-4 border-red-800">
+                          {/* 標題 */}
+                          <div className="bg-red-800 text-yellow-400 p-4 flex justify-between items-center">
+                              <h3 className="font-bold text-lg flex items-center gap-2">
+                                  <Info className="w-5 h-5" />
+                                  活動注意事項
+                              </h3>
+                              <button onClick={() => {
+                                  setShowRules(false);
+                                  if(isDrawFlow) setIsDrawFlow(false);
+                              }} className="text-yellow-400/80 hover:text-white transition-colors">
+                                  <X className="w-6 h-6" />
+                              </button>
+                          </div>
+                          
+                          {/* 內容 */}
+                          <div className="p-6 text-gray-800 text-sm leading-relaxed space-y-3 max-h-[60vh] overflow-y-auto">
+                              <RulesList />
+                          </div>
+
+                          {/* 底部按鈕區 (根據是否為抽籤流程切換) */}
+                          <div className="p-4 bg-gray-50 border-t border-gray-200 text-center">
+                              {isDrawFlow ? (
+                                  <div className="flex flex-col gap-3">
+                                      <p className="text-xs text-gray-500 font-medium">
+                                          我已詳閱並同意以上說明
+                                      </p>
+                                      <button 
+                                          onClick={confirmDraw}
+                                          className="bg-red-800 hover:bg-red-900 text-white px-6 py-3 rounded-lg font-bold text-lg transition-colors w-full flex items-center justify-center gap-2 shadow-lg"
+                                      >
+                                          <Sparkles className="w-5 h-5" />
+                                          看籤詩
+                                      </button>
+                                  </div>
+                              ) : (
+                                  <button 
+                                      onClick={() => setShowRules(false)}
+                                      className="bg-stone-200 hover:bg-stone-300 text-stone-700 px-6 py-2 rounded-lg font-bold transition-colors w-full"
+                                  >
+                                      我已了解
+                                  </button>
+                              )}
+                          </div>
+                      </div>
+                  </div>
+              )}
+
             </div>
           );
         }
